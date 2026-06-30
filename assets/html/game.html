@@ -1,0 +1,40 @@
+<html>
+  <head>
+    <script src="..\scripts\socket.io.js"></script>
+    <script src="..\scripts\jquery.js"></script>
+    <script src="..\scripts\gameSettings.js"></script>
+    <script src="..\scripts\wall.js"></script>
+
+    <link rel="stylesheet" href="..\styles\css.css">
+  </head>
+
+  <body class="wallView" id="body">
+
+    <div id="wall" data-state="idle">
+
+      <div class="wallTop">
+        <div class="wallTimer" id="wallTimer">00:00</div>
+        <div class="wallState" id="wallState">IDLE</div>
+      </div>
+
+      <div class="wallLanes">
+        <div class="wallLane" data-lane="1">
+          <div class="wallLaneName">Lane 1</div>
+          <div class="wallLaneScore" id="wallScore1">0</div>
+          <div class="confettiLayer" id="confetti1"></div>
+        </div>
+        <div class="wallLane" data-lane="2">
+          <div class="wallLaneName">Lane 2</div>
+          <div class="wallLaneScore" id="wallScore2">0</div>
+          <div class="confettiLayer" id="confetti2"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      initWall()
+    </script>
+
+  </body>
+</html>

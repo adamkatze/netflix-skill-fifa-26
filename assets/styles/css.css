@@ -1,0 +1,778 @@
+
+@font-face {
+    font-family: 'NetflixSans-Regular';
+    src: url(../fonts/NetflixSansMono_Rg.ttf);
+}
+@font-face {
+    font-family: 'NetflixSans-Bold';
+    src: url(../fonts/NetflixSansMono_Bd.ttf);
+}
+@font-face {
+    font-family: 'NetflixSans-Italic';
+    src: url(../fonts/NetflixSansMono_It.ttf);
+}
+
+:root {
+    --green: #34A853;
+    --red: #E50914;
+    --blue: #4285F4;
+    --yellow: #FBBC04;
+
+    --darkgrey-bg: #000000;
+    --darkgrey-text: #3C4043;
+    --darkgrey-text-hover: #9AA0A6;
+
+    --darkgrey-bg-50: #202124bb;
+
+
+    --anim-speed: .5s;
+
+    --h1: 120px;
+    --h2: 90px;
+    --h3: 60px;
+    --h4: 50px;
+    --h5: 40px;
+
+    --p: calc(var(--h1) * 0.55);
+    --p2: calc(var(--h1) * 0.5);
+    --p3: calc(var(--h1) * 0.45);
+    --p4: calc(var(--h1) * 0.40);
+
+    --game-padding: 40px;
+
+    --bold-font: 'NetflixSans-Bold', sans-serif;
+    --regular-font: 'NetflixSans-Regular', sans-serif;  
+    --italic-font: 'NetflixSans-Italic', sans-serif;
+
+    --font-size-small: 20px;
+    --font-size-medium: 26px;
+    --font-size-large: 40px;
+    --font-size-timer: 70px;
+
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow:hidden;
+    background-color: var(--darkgrey-bg);
+    color: white;
+    position:relative;
+    height: 100%;
+    width: 100%;
+    font-family: var(--regular-font);
+}
+* {
+    box-sizing: border-box;
+    line-height: 1.1;
+}
+#app-wrapper {
+    position: absolute;
+    width: 1080px;
+    height: 1920px;
+    transform: translate(-50%, -50%) scale(1);
+    transform-origin: top left;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
+    line-height: 1.1;
+    font-family: var(--bold-font);
+}
+h1 { font-size: var(--h1); }
+h2 { font-size: var(--h2); }
+h3 { font-size: var(--h3); }
+h4 { font-size: var(--h4); }
+h5 { font-size: var(--h5); }
+
+button {
+    font-family: var(--bold-font);
+    text-transform: uppercase;
+}
+
+
+
+.swapTar {
+    opacity: 0;
+    transition: var(--anim-speed);
+}
+.hide {
+    display:none !important;
+}
+.animIn {
+    opacity: 1;
+}
+
+
+.gameScreen {
+    z-index: 10;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 20px 20px 60px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+
+
+
+/*------------------------------ Operator Control Panel ------------------------*/
+
+/* The control panel is unscaled — fill the viewport instead of the fixed
+   1080x1920 canvas that the game wall uses. */
+body.controlView #app-wrapper {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: none;
+}
+
+#controlPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: clamp(14px, 2.5vh, 36px);
+    padding: clamp(16px, 4vw, 48px);
+    padding-bottom: 60px;
+    width: 100%;
+    max-width: 640px;
+    height: 100%;
+    margin-inline: auto;
+    overflow-y: auto;
+}
+
+.cpHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+.cpLane {
+    font-size: var(--font-size-small);
+    color: white;
+    font-family: var(--bold-font);
+    text-transform: uppercase;
+    line-height: 1;
+}
+.cpTimerWrap {
+    text-align: center;
+    margin: 3vh 0;
+}
+.cpTimerLabel {
+    font-size: var(--font-size-small);
+    color: white;
+    text-transform: uppercase;
+}
+.cpTimer {
+    font-size: var(--font-size-timer);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--red);
+}
+
+/* Skip Flyover is greyed out and unclickable unless we're in the flyover phase. */
+.cpSkipFlyover {
+    opacity: .2;
+    pointer-events: none;
+}
+#controlPanel[data-phase="flyover"] .cpSkipFlyover {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Scoring is disabled until the flyover finishes and the game begins. */
+#controlPanel[data-phase="flyover"] .cpScoreButtons,
+#controlPanel[data-phase="flyover"] .cpCelebrate {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.cpScoreDisplay {
+    display: flex;
+    align-items: flex-end;
+    text-align: right;
+    gap: 2px;
+}
+.cpScoreLabel {
+    font-size: var(--font-size-small);
+    color: white;
+    text-transform: uppercase;
+    font-family: var(--bold-font);
+}
+.cpScore {
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    font-family: var(--bold-font);
+}
+
+.cpScoreButtons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(10px, 2.5vw, 24px);
+}
+/* +1 / +2 / +3 share the top row; -1 gets its own full-width row. */
+.cpScoreButtons .cpMinus {
+    grid-column: 1 / -1;
+}
+
+.cpBtn {
+    font-weight: 700;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: transform .1s ease, filter .1s ease;
+}
+.cpBtn:active {
+    transform: scale(0.96);
+    filter: brightness(1.2);
+}
+.cpCelebrate {
+    background-color: var(--blue);
+    width: 100%;
+}
+
+.cpDangerButtons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: auto;
+}
+.cpClear {
+    background-color: var(--darkgrey-text);
+}
+.cpRestart {
+    background-color: var(--yellow);
+    color: var(--darkgrey-bg);
+}
+.cpEnd {
+    background-color: var(--red);
+}
+
+/* Responsive button sizing — scoped to the control page so it wins over the
+   shared utility button classes without affecting the game wall. */
+body.controlView .cpBtn {
+    font-size: var(--font-size-medium);
+    padding: clamp(14px, 3vh, 30px) 0;
+}
+/* Longer-labelled buttons get a smaller, fit-friendly size. */
+body.controlView .cpSkipFlyover,
+body.controlView .cpCelebrate {
+    font-size: clamp(1rem, 4.5vw, 2rem);
+}
+body.controlView .cpDangerButtons .cpBtn {
+    font-size: var(--font-size-small);
+    padding: .8em .4em;
+    flex: 0 0 45%;
+}
+
+
+/*------------------------------ Confirm Modal ---------------------------------*/
+
+.cpModal {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--darkgrey-bg-50);
+}
+.cpModalBox {
+    background: black;
+    padding: 20px;
+    border: 1px solid white;
+    border-radius: 10px;
+    width: min(90%, 520px);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(20px, 4vh, 48px);
+}
+.cpModalText {
+    font-size: var(--font-size-medium);
+    margin: 0;
+}
+.cpModalButtons {
+    display: flex;
+    justify-content: space-between;
+}
+.cpModalCancel, .cpModalConfirm {
+    flex: 0 0 45%;
+    border-radius: 10px;
+    padding: .4em !important;
+    font-size: var(--font-size-small) !important;
+}
+.cpModalCancel  { 
+    background-color: black;
+    border: 1px solid white;
+    color: white; 
+
+}
+.cpModalConfirm {
+    background-color: var(--red);
+    color: white;
+
+}
+
+
+/*------------------------------ Help Modal ------------------------------------*/
+
+.cpHelpButton {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 5;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid white;
+    background: black;
+    color: white;
+    font-family: var(--bold-font);
+    font-size: var(--font-size-small);
+    line-height: 1;
+    cursor: pointer;
+}
+
+.cpHelpBox {
+    width: min(92%, 560px);
+    max-height: 85vh;
+    gap: 18px;
+    position:absolute
+}
+.cpHelpContent {
+    overflow: auto;
+}
+.cpHelpTitle {
+    margin: 0;
+    font-size: var(--font-size-large);
+    text-transform: uppercase;
+}
+.cpHelpRow {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 30px;
+}
+.cpHelpBtn {
+}
+.cpHelpText {
+    flex: 1;
+    margin: 0;
+    font-size: calc(var(--font-size-small) * 0.7);
+    font-family: var(--regular-font);
+    text-transform: none;
+    line-height: 1.3;
+}
+.cpHelpText strong {
+    font-family: var(--bold-font);
+}
+
+/* Re-use the real button containers so the samples match, but lay each one out
+   to fill its help cell and make them non-interactive. */
+#cpHelpModal .cpExtraButtons,
+#cpHelpModal .cpScoreButtons,
+#cpHelpModal .cpDangerButtons {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    width: 100%;
+}
+#cpHelpModal .cpHelpBtn > .cpBtn {
+    padding: .4em;
+    font-size: var(--font-size-small);
+    margin: 0;
+}
+#cpHelpModal .cpHelpBtn > button.cpBtn.cpCelebrate.whiteButton {
+    width: max(100%, 300px);
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+#cpHelpModal .cpHelpBtn > button.cpBtn.cpCelebrate.whiteButton img {
+        height: var(--font-size-small);
+}
+#cpHelpModal .cpScoreButtons .cpMinus {
+    grid-column: auto;
+}
+#cpHelpModal .cpSkipFlyover {
+    opacity: 1;        /* shown active in help, not greyed out */
+}
+.cpHelpBtn .cpBtn {
+    pointer-events: none;
+}
+
+
+.laneIndicator {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: white;
+    padding: 10px;
+    color: black;
+    text-align: center;
+    font-family: var(--bold-font);
+    text-transform: uppercase;
+    z-index: 10;
+}
+.redButton,
+.blackButton,
+.whiteButton,
+.grayButton {
+   border-radius: 10px;
+   border: 0px;
+   font-size: 40px;
+   text-transform: uppercase;
+   padding: .5em .8em;
+   cursor: pointer;
+}
+
+.redButton {
+    background-color: var(--red);
+    color: white;
+}
+.grayButton {
+    background: linear-gradient(204deg, #484848 -0.97%, #2D2D2D 24.05%, #222 81.78%);
+    color: white;
+    border: 1px solid white;
+}
+.whiteButton {
+    background-color: white;
+    color: var(--red);
+}
+.blackButton {
+    background-color: var(--darkgrey-bg);
+    color: white;
+    border: 1px solid white;
+}
+
+.screenContent h1 {
+    font-size: 40px;
+    margin: 0px;
+    line-height: 1;
+}
+.screenContent p {
+    margin: 2em 0 0 0;
+}
+
+.screenContent {
+    text-align: center;
+    height: 40vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+img.logo {
+    max-width: 270px;
+}
+
+span#lane {
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+/* Score screen — both lanes' final scores. */
+.finalScores {
+    display: flex;
+    justify-content: center;
+    gap: 12vw;
+    margin-top: 4vh;
+}
+.finalScoreLane {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1vh;
+}
+.finalScoreLabel {
+    font-size: var(--font-size-medium);
+    text-transform: uppercase;
+    color: var(--darkgrey-text-hover);
+    font-family: var(--bold-font);
+}
+.finalScoreValue {
+    font-size: var(--font-size-timer);
+    font-weight: 700;
+    font-family: var(--bold-font);
+    line-height: 1;
+}
+
+.spinner {
+    margin-top: 30px;
+    animation: spin 2.5s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+section#waiting button.next.blackButton {
+    font-size: 25px;
+    margin-top: 30px;
+}
+
+
+/*------------- Responsive sizing for the holding / waiting screens ------------*/
+/* Scoped to the control page so the (scaled) game wall is unaffected. */
+
+body.controlView .screenContent {
+    gap: clamp(8px, 2vh, 24px);
+}
+body.controlView .screenContent h1 {
+    font-size: clamp(1.5rem, 7vw, 3rem);
+}
+body.controlView .screenContent p {
+    font-size: clamp(0.9rem, 4vw, 1.4rem);
+}
+body.controlView img.logo {
+    max-width: clamp(120px, 40vw, 270px);
+}
+body.controlView button.next,
+body.controlView button.back {
+    font-size: clamp(1rem, 4.5vw, 1.6rem);
+}
+body.controlView section#waiting button.next.blackButton {
+    font-size: clamp(0.85rem, 3vw, 1.1rem);
+    border: 0px !important;
+    font-family: var(--regular-font);
+}
+
+
+
+.cpTopContent {
+    border: 1px solid white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 5vh;
+    position: relative;
+}
+
+body.controlView .cpExtraButtons .cpBtn {
+    padding: .4em;
+    font-size: var(--font-size-small);
+    border: 1px solid white;
+    border-radius: .5em;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+}
+body.controlView .cpExtraButtons .cpBtn img {
+    height: var(--font-size-small);
+    width: var(--font-size-small);
+    flex: 0 0 var(--font-size-small);
+    object-fit: contain;
+}
+.cpExtraButtons {
+    display: flex;
+    justify-content: space-between;
+}
+button.cpBtn.cpRestart.blackButton {
+    margin-left: auto;
+}
+.cpExtraButtons * {
+    flex: 0 0 40%;
+}
+.cpTopLogo {
+    display: flex;
+    justify-content: center;
+    top: 0;
+    left: 0;
+    width: 100%;
+    position: absolute;
+}
+.cpTopLogo img {
+    height: 10vh;
+    margin-top: -5vh;
+    background-color: black;
+    padding: 15px;
+}
+
+
+/*------------------------------ Game Wall (display) ---------------------------*/
+
+#wall {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.wallTop {
+    flex: 0 0 auto;
+    text-align: center;
+    padding: 3vh 0 2vh;
+}
+.wallTimer {
+    font-size: 14vh;
+    line-height: 1;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-family: var(--bold-font);
+}
+.wallState {
+    margin-top: 1vh;
+    font-size: 3vh;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--darkgrey-text-hover);
+    font-family: var(--bold-font);
+}
+/* Tint the state label to match the phase. */
+#wall[data-state="flyover"]  .wallState { color: var(--yellow); }
+#wall[data-state="playing"]  .wallState { color: var(--green); }
+#wall[data-state="gameover"] .wallState { color: var(--red); }
+
+.wallLanes {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+}
+.wallLane {
+    position: relative;
+    overflow: hidden;
+    flex: 1 1 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2vh;
+}
+.wallLane[data-lane="1"] { border-right: 2px solid var(--darkgrey-text); }
+.wallLaneName {
+    font-size: 4vh;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: var(--darkgrey-text-hover);
+    font-family: var(--bold-font);
+}
+.wallLaneScore {
+    font-size: 28vh;
+    line-height: 1;
+    font-weight: 700;
+    font-family: var(--bold-font);
+}
+
+/* Confetti */
+.confettiLayer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+.confettiPiece {
+    position: absolute;
+    top: -24px;
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    animation-name: confettiFall;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+}
+@keyframes confettiFall {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    100% { transform: translate(var(--drift, 0), 110vh) rotate(720deg); opacity: 1; }
+}
+
+button.cpBtn.cpModalClose {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 60px;
+    background-color: transparent;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cpHelpHeader {
+    padding-top: 20px;
+    border-top: 1px solid white;
+    margin-top: 20px;
+    font-size: var(--font-size-medium);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    font-family: var(--italic-font);
+}
+
+
+/*------------------------------ Analytics page --------------------------------*/
+
+body.analyticsView {
+    overflow: auto;
+}
+#analytics {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+}
+.anHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+.anHeader h1 {
+    margin: 0;
+    font-size: var(--font-size-large);
+}
+.anActions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.anCount {
+    color: var(--darkgrey-text-hover);
+    font-size: var(--font-size-small);
+    text-transform: uppercase;
+}
+.anActions .redButton {
+    font-size: var(--font-size-small);
+}
+
+.anTableWrap {
+    overflow-x: auto;
+}
+.anTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-small);
+}
+.anTable th,
+.anTable td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--darkgrey-text);
+    white-space: nowrap;
+}
+.anTable th {
+    font-family: var(--bold-font);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 14px;
+    color: var(--darkgrey-text-hover);
+}
+.anTable tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.anInactive {
+    color: var(--darkgrey-text);
+}
+.anEmpty {
+    color: var(--darkgrey-text-hover);
+    padding: 20px 0;
+}

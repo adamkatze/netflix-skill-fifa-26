@@ -1,0 +1,212 @@
+<html>
+  <head>
+    <script src="..\scripts\socket.io.js"></script>
+    <script src="..\scripts\jquery.js"></script>
+    <script src="..\scripts\phaser.min.js"></script>
+    <script src="..\scripts\scripts.js"></script>
+
+    <script src="..\scripts\gameSettings.js"></script>
+    <script src="..\scripts\game.js"></script>
+    <script src="..\scripts\control.js"></script>
+
+    <link rel="stylesheet" href="..\styles\css.css">
+  </head>
+
+
+
+<body class="controlView" id="body">
+  <div id="app-wrapper">
+
+        <section id="holding" class="gameScreen swapTar animIn">
+            <img src="..\images\netflix_skill_logo.png" alt="Netflix and Skill Logo" class="logo">
+
+            <div class="screenContent">
+              <h1>Fifa Women's World Cup 2027</h1>
+              <p>Netflix Experience at Fanatics Fest</p>
+            </div>
+
+            <button class="next redButton" onclick="startGameRequest()">Start Game</button>
+        </section>
+
+
+
+
+        <section id="waiting" class="gameScreen swapTar hide">
+            <img src="..\images\netflix_skill_logo.png" alt="Netflix and Skill Logo" class="logo">
+            
+            <div class="screenContent">
+              <h1>Waiting for<br><span id="lane">LANE</span> to Join Game</h1>
+              <div class="spinner">
+                <img src="..\images\spinner.png" alt="Loading Spinner">
+              </div>
+            </div>
+            <button class="back redButton" onclick="cancelWaiting()">Back to Home</button>
+            <button class="next blackButton" onclick="skipToSolo()">Skip to game for solo play</button>
+        </section>
+
+
+
+
+        <section id="controlPanel" class="gameScreen swapTar hide">
+
+
+            <div class="cpTopContent">
+                <button class="cpHelpButton" onclick="openHelp()" aria-label="Help">?</button>
+                <div class="cpTopLogo">
+                  <img src="../images/netflix_skill_logo.png" alt="Netflix and Skill Logo" class="logoSmall">
+                </div>
+                <div class="cpHeader">
+                  <div class="cpLane">Lane <span id="cpLaneNum">?</span></div>
+                  <div class="cpScoreDisplay">
+                    <span class="cpScoreLabel">Score: </span>
+                    <span class="cpScore" id="cpScore">0</span>
+                  </div>
+                </div>
+
+                <div class="cpTimerWrap">
+                  
+                  <div class="cpTimer" id="cpTimer">00:00</div>
+                  <div class="cpTimerLabel" id="cpTimerLabel">Remaining</div>
+                </div>
+
+                <div class="cpExtraButtons">
+                  <button class="cpBtn cpSkipFlyover blackButton" onclick="skipFlyover()"><img src="../images/skip.png" alt="Skip Flyover">Skip Flyover</button>
+                  <button class="cpBtn cpRestart blackButton" onclick="restartGame()"><img src="../images/restart.png" alt="Restart Game">Restart Game</button>
+                </div>
+
+            </div>
+
+            <div class="cpScoreButtons">
+              <button class="cpBtn cpPlus grayButton" onclick="addScore(1)">+1 Point</button>
+              <button class="cpBtn cpPlus grayButton" onclick="addScore(2)">+2 Points</button>
+              <button class="cpBtn cpPlus grayButton" onclick="addScore(3)">+3 Points</button>
+              <button class="cpBtn cpMinus grayButton" onclick="addScore(-1)">&minus;1 Point</button>
+            </div>
+
+            <button class="cpBtn cpCelebrate whiteButton" onclick="triggerCelebration()"><img src="../images/celebration.png" alt="Celebration"> Celebration</button>
+
+            <div class="cpDangerButtons">
+              <button class="cpBtn cpClear blackButton" onclick="clearPoints()">Clear Points</button>
+              
+              <button class="cpBtn cpEnd redButton" onclick="endGame()">End Game</button>
+            </div>
+        </section>
+
+
+        <div id="cpModal" class="cpModal hide">
+          <div class="cpModalBox">
+            <p class="cpModalText" id="cpModalText">Are you sure?</p>
+            <div class="cpModalButtons">
+              <button class="cpBtn cpModalCancel" onclick="closeConfirm()">Cancel</button>
+              <button class="cpBtn cpModalConfirm" onclick="confirmAction()">Yes, I'm sure</button>
+            </div>
+          </div>
+        </div>
+
+
+        <div id="cpHelpModal" class="cpModal hide">
+          <div class="cpModalBox cpHelpBox">
+            <button class="cpBtn cpModalClose" onclick="closeHelp()">X</button>
+            <h2 class="cpHelpTitle">Controls</h2>
+
+            <div class="cpHelpContent">
+            
+
+            <div class="cpHelpRow">
+              <div class="cpHelpBtn cpScoreButtons">
+                <button class="cpBtn cpPlus grayButton">+1 Point</button>
+                <button class="cpBtn cpPlus grayButton">+2 Points</button>
+                <button class="cpBtn cpPlus grayButton">+3 Points</button>
+              </div>
+              <p class="cpHelpText"><strong>+1 / +2 / +3 Points</strong> — add 1, 2, or 3 points to this lane's score.</p>
+            </div>
+
+            <div class="cpHelpRow">
+              <div class="cpHelpBtn cpScoreButtons">
+                <button class="cpBtn cpMinus grayButton">&minus;1 Point</button>
+              </div>
+              <p class="cpHelpText"><strong>&minus;1 Point</strong> — removes one point from this lane's score (never below zero).</p>
+            </div>
+
+            <div class="cpHelpRow">
+              <div class="cpHelpBtn">
+                <button class="cpBtn cpCelebrate whiteButton"><img src="../images/celebration.png" alt=""> Celebration</button>
+              </div>
+              <p class="cpHelpText"><strong>Celebration</strong> — triggers a celebration animation on this lane's side of the game wall.</p>
+            </div>
+
+
+            <div class="cpHelpHeader">
+              Global Buttons:
+            </div>
+
+
+            <div class="cpHelpRow">
+              <div class="cpHelpBtn cpExtraButtons">
+                <button class="cpBtn cpSkipFlyover blackButton"><img src="../images/skip.png" alt="">Skip Flyover</button>
+              </div>
+              <p class="cpHelpText"><strong>Skip Flyover</strong> — skips the intro flyover animation and starts the game timer immediately. Only available while the flyover is playing.</p>
+            </div>
+
+            <div class="cpHelpRow">
+              <div class="cpHelpBtn cpExtraButtons">
+                <button class="cpBtn cpRestart blackButton"><img src="../images/restart.png" alt="">Restart Game</button>
+              </div>
+              <p class="cpHelpText"><strong>Restart Game</strong> — restarts the current round from the beginning of the flyover. Both lanes' scores reset to zero.</p>
+            </div>
+
+            <div class="cpHelpRow">
+              <div class="cpHelpBtn cpDangerButtons">
+                <button class="cpBtn cpClear blackButton">Clear Points</button>
+              </div>
+              <p class="cpHelpText"><strong>Clear Points</strong> — resets this lane's score to zero. Asks for confirmation first.</p>
+            </div>
+
+            <div class="cpHelpRow">
+              <div class="cpHelpBtn cpDangerButtons">
+                <button class="cpBtn cpEnd redButton">End Game</button>
+              </div>
+              <p class="cpHelpText"><strong>End Game</strong> — ends the round for both lanes and shows the final score. Asks for confirmation first.</p>
+            </div>
+
+            </div>
+            
+          </div>
+        </div>
+
+
+
+
+        <section id="score" class="gameScreen swapTar hide">
+            <img src="..\images\netflix_skill_logo.png" alt="Netflix and Skill Logo" class="logo">
+
+            <div class="screenContent">
+              <h1>Final Score</h1>
+              <div class="finalScores">
+                <div class="finalScoreLane">
+                  <div class="finalScoreLabel">Lane 1</div>
+                  <div class="finalScoreValue" id="finalScore1">0</div>
+                </div>
+                <div class="finalScoreLane">
+                  <div class="finalScoreLabel">Lane 2</div>
+                  <div class="finalScoreValue" id="finalScore2">0</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="next redButton" onclick="resetControl()">Start Over</button>
+        </section>
+
+
+        <div class="laneIndicator">
+          Lane Indicator
+        </div>
+
+
+        <script>
+           initControl()
+        </script>
+
+
+  </div>
+</body>

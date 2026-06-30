@@ -1,0 +1,30 @@
+<html>
+  <head>
+    <script src="..\scripts\analytics.js"></script>
+    <link rel="stylesheet" href="..\styles\css.css">
+  </head>
+
+  <body class="analyticsView">
+
+    <div id="analytics">
+
+      <div class="anHeader">
+        <h1>Game Analytics</h1>
+        <div class="anActions">
+          <span class="anCount" id="anCount"></span>
+          <button class="redButton" onclick="downloadCSV()">Download as CSV</button>
+        </div>
+      </div>
+
+      <div class="anTableWrap" id="anTableWrap">
+        <p class="anEmpty">Loading&hellip;</p>
+      </div>
+
+    </div>
+
+    <script>
+      initAnalytics()
+    </script>
+
+  </body>
+</html>
