@@ -16,6 +16,17 @@ const gameLength = 12000;
 // Adjust once we know the real animation length. The server is authoritative.
 const flyoverLength = 10000;
 
+
+//------------------------------Display Wall Settings-----------------------------
+// Full dimensions of the physical wall panel, in px.
+const wallWidth = 6240
+const wallHeight = 2080
+
+// The region of the wall the game UI occupies. It is aligned to the RIGHT edge
+// of the wall; the remaining width to the left is left empty for now.
+const gameAreaWidth = 2496
+const gameAreaHeight = 2080
+
 var depthSettings = {
     bg_sub: 10,
     bg : 20,

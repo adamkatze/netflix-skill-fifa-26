@@ -10,9 +10,10 @@
 const socket = io();
 const LANES = ['1', '2'];
 
-let wallState = 'idle';     // 'idle' | 'flyover' | 'playing' | 'gameover'
+let wallState = 'idle';     // 'idle' | 'flyover' | 'countdown' | 'playing' | 'gameover'
 let timerEnd = 0;           // performance.now() timestamp the countdown ends at
 let timerInterval = null;
+let countdownTimer = null;  // interval for the 3-2-1 start countdown
 
 const STATE_LABELS = {
     idle:     'IDLE',
@@ -23,10 +24,59 @@ const STATE_LABELS = {
 
 
 function initWall() {
+    setupWallLayout();
+    window.addEventListener('resize', scaleWall);
+
     listenForServer();
 
     // Ask the server for the current round in case we loaded mid-game.
     socket.emit('message', { action: 'registerDisplay' });
+}
+
+
+//--------------------------------- Wall layout --------------------------------
+
+// Size the full wall canvas and the right-aligned game UI area from config,
+// then scale the whole thing to fit the current screen.
+function setupWallLayout() {
+    const stage = document.getElementById('wallStage');
+    stage.style.width = wallWidth + 'px';
+    stage.style.height = wallHeight + 'px';
+
+    const wall = document.getElementById('wall');
+    wall.style.width = gameAreaWidth + 'px';
+    wall.style.height = gameAreaHeight + 'px';
+
+    updateBackgroundVideo('idle');   // show the idle background right away
+    scaleWall();
+}
+
+// Swap the fullscreen background video to match the current state. States with
+// no configured video (empty string) keep whatever is already playing.
+function updateBackgroundVideo(state) {
+    const src = (typeof wallVideos !== 'undefined') ? wallVideos[state] : null;
+    if (!src) return;
+
+    const video = document.getElementById('wallVideo');
+    if (!video || video.dataset.state === state) return;
+
+    video.dataset.state = state;
+    video.src = src;
+    video.load();
+
+    const played = video.play();
+    if (played && played.catch) played.catch(() => {});   // ignore autoplay blocks
+}
+
+// Fit the fixed-size wall canvas into the browser window, centered.
+function scaleWall() {
+    const stage = document.getElementById('wallStage');
+    const scale = Math.min(window.innerWidth / wallWidth, window.innerHeight / wallHeight);
+
+    const offsetX = (window.innerWidth - wallWidth * scale) / 2;
+    const offsetY = (window.innerHeight - wallHeight * scale) / 2;
+
+    stage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
 }
 
 
@@ -47,10 +97,14 @@ function listenForServer() {
                 startTimer(data.data && data.data.flyover, flyoverLength);
                 break;
 
-            // Flyover finished — the game timer is now running.
+            // Flyover finished — show the 3-2-1 countdown over the hidden UI.
+            case 'countdown':
+                startCountdownVisual(data.data && data.data.duration);
+                break;
+
+            // Countdown finished — reveal the game and start the timer.
             case 'beginGame':
-                setState('playing');
-                startTimer(data.data && data.data.duration, gameLength);
+                revealGame(data.data && data.data.duration);
                 break;
 
             // The round ended.
@@ -89,6 +143,8 @@ function applyState(s) {
     if (s.phase === 'flyover') {
         setState('flyover');
         startTimer(s.flyoverRemaining, flyoverLength);
+    } else if (s.phase === 'countdown') {
+        startCountdownVisual(s.countdownRemaining);
     } else if (s.phase === 'active') {
         setState('playing');
         startTimer(s.gameRemaining, gameLength);
@@ -103,9 +159,55 @@ function applyState(s) {
 //--------------------------------- State --------------------------------------
 
 function setState(state) {
+    stopCountdown();                 // cancel any in-progress start countdown
     wallState = state;
     $('#wall').attr('data-state', state);
     $('#wallState').text(STATE_LABELS[state] || state);
+    updateBackgroundVideo(state);
+}
+
+
+//--------------------------- Start-of-play countdown --------------------------
+
+// The server started the countdown phase: switch to the gameplay background and
+// show the counting numbers over the (still hidden) UI. The game timer is held
+// on the server, so the reveal happens when the 'beginGame' message arrives.
+function startCountdownVisual(durationMs) {
+    stopCountdown();
+    updateBackgroundVideo('playing');
+
+    wallState = 'countdown';
+    $('#wall').attr('data-state', 'countdown');
+
+    const el = document.getElementById('wallCountdown');
+    let n = Math.max(1, Math.round((durationMs ?? 3000) / 1000));
+    showCountdownNumber(el, n);
+
+    countdownTimer = setInterval(function () {
+        n--;
+        if (n >= 1) showCountdownNumber(el, n);
+        else stopCountdown();        // reached zero — wait for beginGame to reveal
+    }, 1000);
+}
+
+function showCountdownNumber(el, n) {
+    el.textContent = n;
+    el.classList.remove('pop');
+    void el.offsetWidth;             // reflow to restart the pop animation
+    el.classList.add('pop');
+}
+
+function stopCountdown() {
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+}
+
+// Countdown finished on the server — reveal the game UI and start the timer.
+function revealGame(durationMs) {
+    setState('playing');
+    startTimer(durationMs ?? gameLength);
 }
 
 
@@ -164,14 +266,14 @@ function celebrate(lane) {
     if (!layer) return;
 
     const colors = ['#E50914', '#FBBC04', '#34A853', '#4285F4', '#ffffff'];
-    const count = 80;
+    const count = 120;
 
     for (let i = 0; i < count; i++) {
         const piece = document.createElement('div');
         piece.className = 'confettiPiece';
         piece.style.left = (Math.random() * 100) + '%';
         piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        piece.style.setProperty('--drift', (Math.random() * 240 - 120) + 'px');
+        piece.style.setProperty('--drift', (Math.random() * 600 - 300) + 'px');
 
         const duration = 1.8 + Math.random() * 1.6;
         const delay = Math.random() * 0.4;

@@ -94,7 +94,7 @@ ensureColumns('analytics', [
 
 
 // Start the server
-const port = 3000;
+const port = 3001;
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
@@ -137,6 +137,9 @@ const GAME_LENGTH_MS = 120 * 1000;
 // Adjust once we know the real animation length.
 const FLYOVER_MS = 10 * 1000;
 
+// Length of the 3-2-1 countdown between the flyover and the game timer starting.
+const COUNTDOWN_MS = 3 * 1000;
+
 // Grace period after the game timer hits zero before the round auto-ends,
 // in case an operator never ends it manually.
 const AUTO_END_GRACE_MS = 10 * 1000;
@@ -150,11 +153,13 @@ const laneScores = {};
 
 // Current round phase: 'idle' | 'flyover' | 'active'. Used to let a control
 // panel rejoin the right screen if it refreshes mid-game.
-let gamePhase = 'idle';
+let gamePhase = 'idle';      // 'idle' | 'flyover' | 'countdown' | 'active'
 let gameLanes = [];          // the lanes actually taking part in the current round
 let flyoverEndsAt = 0;       // ms epoch the flyover animation ends
+let countdownEndsAt = 0;     // ms epoch the 3-2-1 countdown ends
 let gameEndsAt = 0;          // ms epoch the game timer runs out
-let flyoverTimer = null;     // setTimeout handle for the flyover -> game transition
+let flyoverTimer = null;     // setTimeout handle for the flyover -> countdown transition
+let countdownTimer = null;   // setTimeout handle for the countdown -> game transition
 let gameTimer = null;        // setTimeout handle for the auto-end after the round
 let resultsPending = false;  // a round ended and panels are still showing the result
 let gameStartedAt = 0;       // ms epoch the round started (flyover begin)
@@ -188,6 +193,7 @@ function checkAllWaiting() {
 // The broadcast carries the participant lanes so only they react.
 function beginFlyover(action, lanes) {
     if (gameTimer) { clearTimeout(gameTimer); gameTimer = null; }
+    if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
     gameLanes = lanes.slice();
 
     gameLanes.forEach(lane => {
@@ -208,7 +214,7 @@ function beginFlyover(action, lanes) {
     broadcastScores();
 
     if (flyoverTimer) clearTimeout(flyoverTimer);
-    flyoverTimer = setTimeout(beginGame, FLYOVER_MS);
+    flyoverTimer = setTimeout(beginCountdown, FLYOVER_MS);
 }
 
 // Start a fresh round with both lanes (after both finished waiting).
@@ -231,23 +237,41 @@ function restartGame() {
 
 // Send a single socket back into the live game at its current phase.
 function sendRejoin(socket) {
-    const endsAt = gamePhase === 'flyover' ? flyoverEndsAt : gameEndsAt;
+    const endsAt = gamePhase === 'flyover' ? flyoverEndsAt
+                 : gamePhase === 'countdown' ? countdownEndsAt
+                 : gameEndsAt;
     socket.emit('message', {
         action: 'rejoinGame',
         data: { phase: gamePhase, duration: Math.max(0, endsAt - Date.now()), scores: laneScores }
     });
 }
 
-// Flyover finished (timed out or skipped) — start the actual game timer.
-function beginGame() {
+// Flyover finished (timed out or skipped) — run the 3-2-1 countdown. The game
+// timer does NOT start yet; it waits until the countdown is over.
+function beginCountdown() {
     if (flyoverTimer) { clearTimeout(flyoverTimer); flyoverTimer = null; }
     if (gamePhase !== 'flyover') return;
+
+    gamePhase = 'countdown';
+    countdownEndsAt = Date.now() + COUNTDOWN_MS;
+
+    console.log('Flyover complete — starting countdown');
+    io.emit('message', { action: 'countdown', data: { duration: COUNTDOWN_MS } });
+
+    if (countdownTimer) clearTimeout(countdownTimer);
+    countdownTimer = setTimeout(startPlay, COUNTDOWN_MS);
+}
+
+// Countdown finished — now start the actual game timer.
+function startPlay() {
+    if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
+    if (gamePhase !== 'countdown') return;
 
     gamePhase = 'active';
     gameEndsAt = Date.now() + GAME_LENGTH_MS;
     gamePlayStartedAt = Date.now();
 
-    console.log('Flyover complete — game timer started');
+    console.log('Countdown complete — game timer started');
     io.emit('message', { action: 'beginGame', data: { duration: GAME_LENGTH_MS } });
 
     // Auto-end the round a grace period after the timer runs out, unless an
@@ -264,6 +288,7 @@ function endGame() {
     gamePhase = 'idle';
     resultsPending = true;
     if (flyoverTimer) { clearTimeout(flyoverTimer); flyoverTimer = null; }
+    if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
     if (gameTimer) { clearTimeout(gameTimer); gameTimer = null; }
 
     logGame();   // record the completed game before we clear the participants
@@ -360,6 +385,7 @@ io.on('connection', socket => {
               lanes: LANES,
               scores: laneScores,
               flyoverRemaining: Math.max(0, flyoverEndsAt - Date.now()),
+              countdownRemaining: Math.max(0, countdownEndsAt - Date.now()),
               gameRemaining: Math.max(0, gameEndsAt - Date.now())
             }
           });
@@ -431,10 +457,10 @@ io.on('connection', socket => {
           }
         }
 
-        // Skip Flyover — jump past the intro animation and start the timer now.
+        // Skip Flyover — jump past the intro animation into the countdown.
         if (data.action == "skipFlyover") {
           console.log(`Flyover skipped by lane ${data.data.lane}`);
-          beginGame();
+          beginCountdown();
         }
 
         // Restart Game — replay the current round from the start of the flyover.

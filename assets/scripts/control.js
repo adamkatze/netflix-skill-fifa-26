@@ -60,7 +60,13 @@ function listenForServer() {
             }
         }
 
-        // Flyover finished (or was skipped) — start the real game timer.
+        // Flyover finished — the 3-2-1 countdown before the game timer starts.
+        if (data.action === 'countdown') {
+            gameInProgress = true;
+            if (controlState === 'game') startCountdownPhase(data.data && data.data.duration);
+        }
+
+        // Countdown finished — start the real game timer.
         if (data.action === 'beginGame') {
             gameInProgress = true;
             if (controlState === 'game') beginGame(data.data && data.data.duration);
@@ -154,6 +160,15 @@ function startFlyover(durationMs) {
     startTimer(durationMs ?? flyoverLength);
 }
 
+// Countdown phase — the 3-2-1 before the game timer. Scoring stays disabled and
+// the game timer is held until the server's 'beginGame' message.
+function startCountdownPhase(durationMs) {
+    gamePhase = 'countdown';
+    $('#controlPanel').attr('data-phase', 'countdown');
+    $('#cpTimerLabel').text('Get Ready');
+    startTimer(durationMs ?? 3000);
+}
+
 // Active phase — the real game timer is running.
 function beginGame(durationMs) {
     gamePhase = 'active';
@@ -208,6 +223,8 @@ function rejoinLiveGame(phase, duration, scores) {
 
     if (phase === 'flyover') {
         startFlyover(duration);
+    } else if (phase === 'countdown') {
+        startCountdownPhase(duration);
     } else {
         beginGame(duration);
     }

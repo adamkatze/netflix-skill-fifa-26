@@ -3,6 +3,7 @@
     <script src="..\scripts\socket.io.js"></script>
     <script src="..\scripts\jquery.js"></script>
     <script src="..\scripts\gameSettings.js"></script>
+    <script src="..\scripts\videoSettings.js"></script>
     <script src="..\scripts\wall.js"></script>
 
     <link rel="stylesheet" href="..\styles\css.css">
@@ -10,24 +11,35 @@
 
   <body class="wallView" id="body">
 
-    <div id="wall" data-state="idle">
+    <div id="wallStage">
 
-      <div class="wallTop">
-        <div class="wallTimer" id="wallTimer">00:00</div>
-        <div class="wallState" id="wallState">IDLE</div>
-      </div>
+      <video id="wallVideo" autoplay muted loop playsinline></video>
 
-      <div class="wallLanes">
-        <div class="wallLane" data-lane="1">
-          <div class="wallLaneName">Lane 1</div>
-          <div class="wallLaneScore" id="wallScore1">0</div>
-          <div class="confettiLayer" id="confetti1"></div>
+      <div id="wall" data-state="idle">
+
+        <div class="wallCountdown" id="wallCountdown"></div>
+
+        <div class="wallTop">
+          <div class="wallTimer" id="wallTimer">00:00</div>
         </div>
-        <div class="wallLane" data-lane="2">
-          <div class="wallLaneName">Lane 2</div>
-          <div class="wallLaneScore" id="wallScore2">0</div>
-          <div class="confettiLayer" id="confetti2"></div>
+
+        <div class="wallGameOver">Game Over!</div>
+
+        <div class="wallLanes">
+          <div class="wallLane" data-lane="1">
+            <div class="wallLaneScoreBox">
+              <div class="wallLaneScore" id="wallScore1">0</div>
+            </div>
+            <div class="confettiLayer" id="confetti1"></div>
+          </div>
+          <div class="wallLane" data-lane="2">
+            <div class="wallLaneScoreBox">
+              <div class="wallLaneScore" id="wallScore2">0</div>
+            </div>
+            <div class="confettiLayer" id="confetti2"></div>
+          </div>
         </div>
+
       </div>
 
     </div>
