@@ -612,7 +612,8 @@ button.cpBtn.cpRestart.blackButton {
     transform-origin: top left;
     background: var(--darkgrey-bg);
 }
-/* Fullscreen background video spanning the entire wall, behind the UI. */
+/* Fullscreen background video spanning the entire wall, behind the UI.
+   Fades out/in when switching sources between states (see wall.js). */
 #wallVideo {
     position: absolute;
     inset: 0;
@@ -621,6 +622,20 @@ button.cpBtn.cpRestart.blackButton {
     object-fit: cover;
     z-index: 0;
     background: var(--darkgrey-bg);
+    opacity: 1;
+    transition: opacity var(--anim-speed);
+}
+/* Transparent game-over overlay video — spans the whole wall, above the
+   background video and the UI. No background so its alpha channel shows through. */
+#wallOverlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 2;
+    pointer-events: none;
+    display: none;
 }
 /* The game UI occupies a right-aligned region of the wall (gameAreaWidth x
    gameAreaHeight, set in wall.js), sitting above the background video. */
@@ -647,6 +662,34 @@ button.cpBtn.cpRestart.blackButton {
 #wall[data-state="countdown"] .wallLanes {
     opacity: 0;
     visibility: hidden;
+}
+
+/* Timer and score boxes start hidden and fade in once the countdown finishes
+   (state becomes "playing"), staying visible through game over. */
+.wallLaneScoreBox,
+#wallTimer {
+    opacity: 0;
+    transition: opacity var(--anim-speed);
+}
+#wall[data-state="playing"] .wallLaneScoreBox,
+#wall[data-state="playing"] #wallTimer,
+#wall[data-state="gameover"] .wallLaneScoreBox,
+#wall[data-state="gameover"] #wallTimer {
+    opacity: 1;
+}
+
+/* "3-2-1 -> KICK" video, centered across the two lanes at the top of the wall.
+   Shows during the countdown and holds "KICK" through gameplay. */
+.wallKick {
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    height: auto;
+    z-index: 3;
+    pointer-events: none;
+    display: none;
 }
 
 /* Start-of-play 3-2-1 countdown, centered near the top of the game UI area. */
@@ -691,8 +734,9 @@ button.cpBtn.cpRestart.blackButton {
     text-transform: uppercase;
     color: var(--red);
     z-index: 3;
-    display: none;
+    display: none !important;
 }
+#wall.timeup .wallGameOver,
 #wall[data-state="gameover"] .wallGameOver {
     display: block;
     animation: gameOverPop 0.4s ease-out;
@@ -706,7 +750,7 @@ button.cpBtn.cpRestart.blackButton {
     flex: 0 0 auto;
     text-align: center;
     position: absolute;
-    top: 10%;
+    top: 25%;
     left: 0;
     width: 100%;
     display: flex;
@@ -762,13 +806,13 @@ font-size: 100px;
 }
 .wallLaneScoreBox {
     position: absolute;
-    top: 15%;
+    top: 30%;
     left: 30%;
     width: 40%;
     text-align: center;
     border: 8px solid var(--red);
     border-radius: 20px;
-        background-color: #00000090;
+    background-color: #00000090;
 }
 .wallLaneScore {
     font-size: 200px;
@@ -776,6 +820,18 @@ font-size: 100px;
     font-weight: 700;
     font-family: var(--bold-font);
     color: var(--red);
+}
+
+/* Transparent "WINNER" animation over the winning lane's column at game over. */
+.wallWinner {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 30%;
+    object-fit: cover;
+    pointer-events: none;
+    z-index: 4;
+    display: none;
 }
 
 /* Confetti */

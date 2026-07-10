@@ -19,6 +19,8 @@
 
         <div class="wallCountdown" id="wallCountdown"></div>
 
+        <video id="wallKick" class="wallKick" muted playsinline preload="auto"></video>
+
         <div class="wallTop">
           <div class="wallTimer" id="wallTimer">00:00</div>
         </div>
@@ -30,17 +32,21 @@
             <div class="wallLaneScoreBox">
               <div class="wallLaneScore" id="wallScore1">0</div>
             </div>
+            <video class="wallWinner" id="winner1" muted loop playsinline preload="auto"></video>
             <div class="confettiLayer" id="confetti1"></div>
           </div>
           <div class="wallLane" data-lane="2">
             <div class="wallLaneScoreBox">
               <div class="wallLaneScore" id="wallScore2">0</div>
             </div>
+            <video class="wallWinner" id="winner2" muted loop playsinline preload="auto"></video>
             <div class="confettiLayer" id="confetti2"></div>
           </div>
         </div>
 
       </div>
+
+      <video id="wallOverlay" muted loop playsinline preload="auto"></video>
 
     </div>
 

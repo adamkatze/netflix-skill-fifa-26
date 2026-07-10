@@ -138,7 +138,7 @@ const GAME_LENGTH_MS = 120 * 1000;
 const FLYOVER_MS = 10 * 1000;
 
 // Length of the 3-2-1 countdown between the flyover and the game timer starting.
-const COUNTDOWN_MS = 3 * 1000;
+const COUNTDOWN_MS = 5 * 1000;
 
 // Grace period after the game timer hits zero before the round auto-ends,
 // in case an operator never ends it manually.

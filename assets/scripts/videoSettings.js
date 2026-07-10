@@ -13,3 +13,24 @@ const wallVideos = {
     playing:  '../videos/gameplay.mov',
     gameover: ''
 };
+
+
+// Transparent video overlaid over the whole wall (on top of the background
+// video and UI) when the game ends. Use a format with an alpha channel —
+// e.g. WebM (VP9 alpha) for Chrome, or HEVC-with-alpha .mov for Safari.
+// Set to '' to disable the overlay.
+const gameOverOverlayVideo = '../videos/confetti.webm';
+
+
+// Transparent "WINNER" animation shown over the winning lane's column when the
+// game ends. Same alpha-capable format requirement as above. Set to '' to disable.
+const winnerVideo = '../videos/WINNER.webm';
+
+
+// Transparent "3-2-1 -> KICK" animation played during the countdown phase,
+// centered across the two lanes at the top. It should NOT loop — it ends on the
+// "KICK" frame, which stays visible through gameplay. Set '' to use plain text.
+// Tip: match COUNTDOWN_MS on the server to the video's 3-2-1 length so the game
+// starts exactly as "KICK" appears.
+const kickCountdownVideo = '../videos/KICK.webm';
+
