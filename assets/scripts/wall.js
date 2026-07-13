@@ -21,6 +21,7 @@ let timerInterval = null;
 let countdownTimer = null;  // interval for the 3-2-1 start countdown
 let latestScores = {};      // most recent score map, used to pick the winner
 let bgFadeTimer = null;     // setTimeout handle for the background-video crossfade
+let confettiFinished = false;   // this round's confetti overlay has fully played
 
 // Background-video fade duration, in ms. Keep in sync with the CSS opacity
 // transition on #wallVideo (var(--anim-speed), 500ms).
@@ -36,6 +37,7 @@ const STATE_LABELS = {
 
 function initWall() {
     setupWallLayout();
+    enableAudioOnFirstGesture();
     window.addEventListener('resize', scaleWall);
 
     // Debug: skip live updates and hold a state so overlay videos can be
@@ -78,6 +80,34 @@ function forceDebugKick() {
     if (v) v.loop = true;
 
     playKickVideo();
+}
+
+
+//--------------------------------- Audio unlock -------------------------------
+
+// Browsers block sound until the page gets a user gesture, and a blocked
+// play() on an unmuted video means it never starts at all. So every player
+// starts muted (autoplay always works) and the first click / keypress / touch
+// unmutes them all for the rest of the session. If Chrome is launched with
+// --autoplay-policy=no-user-gesture-required, the gesture is simply never
+// needed elsewhere — this stays harmless.
+function enableAudioOnFirstGesture() {
+    const unmute = function () {
+        document.querySelectorAll('video').forEach(v => {
+            const wasPlaying = !v.paused && !v.ended;
+            v.muted = false;
+            // Chrome pauses an autoplay-muted video the moment it's unmuted;
+            // resume it within this same gesture so it's allowed with sound.
+            if (wasPlaying && v.paused) {
+                const played = v.play();
+                if (played && played.catch) played.catch(() => {});
+            }
+        });
+        console.log('[wall] audio unlocked — videos unmuted');
+    };
+    ['click', 'keydown', 'touchstart'].forEach(evt =>
+        window.addEventListener(evt, unmute, { once: true })
+    );
 }
 
 
@@ -226,11 +256,20 @@ function setState(state) {
     $('#wall').attr('data-state', state);
     $('#wall').removeClass('timeup');   // cleared here; re-added when the timer hits 0
     $('#wallState').text(STATE_LABELS[state] || state);
-    updateBackgroundVideo(state);
+
+    // Game over keeps the gameplay background looping while the confetti
+    // overlay plays once; the overlay's 'ended' handler swaps in the reveal.
+    if (state !== 'gameover') {
+        updateBackgroundVideo(state);
+    } else if (!gameOverOverlayVideo || confettiFinished) {
+        showRevealBackground();
+    }
 
     if (state !== 'gameover') {
         hideGameOverOverlay();
         hideWinner();
+        $('#wall').removeClass('reveal');   // scores come back for the next round
+        confettiFinished = false;   // new round — confetti must gate the reveal again
     }
     // KICK video shows during countdown/playing; hide for any other state.
     if (state !== 'playing') hideKickVideo();
@@ -249,12 +288,29 @@ function playGameOverOverlay() {
         v.src = gameOverOverlayVideo;
         v.dataset.loaded = '1';
     }
+    confettiFinished = false;
     v.dataset.playing = '1';
     v.style.display = 'block';
     v.currentTime = 0;
 
+    // Plays once; when it finishes, hide it and swap the background from the
+    // looping gameplay video to the game-over reveal.
+    v.onended = v.onerror = function () {
+        confettiFinished = true;
+        hideGameOverOverlay();
+        if (wallState === 'gameover' || $('#wall').hasClass('timeup')) {
+            showRevealBackground();
+        }
+    };
+
     const played = v.play();
     if (played && played.catch) played.catch(() => {});
+}
+
+// Swap the background to the game-over reveal and hide the scores under it.
+function showRevealBackground() {
+    $('#wall').addClass('reveal');
+    updateBackgroundVideo('gameover');
 }
 
 function hideGameOverOverlay() {

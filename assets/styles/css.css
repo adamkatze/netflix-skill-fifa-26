@@ -175,6 +175,13 @@ body.controlView #app-wrapper {
     color: var(--red);
 }
 
+/* Skip Flyover is hidden for now (button + its help-modal row). All the code
+   behind it still works — delete this rule to bring it back. */
+.cpSkipFlyover,
+.cpHelpRow:has(.cpSkipFlyover) {
+    display: none !important;
+}
+
 /* Skip Flyover is greyed out and unclickable unless we're in the flyover phase. */
 .cpSkipFlyover {
     opacity: .2;
@@ -678,6 +685,13 @@ button.cpBtn.cpRestart.blackButton {
     opacity: 1;
 }
 
+/* Once the reveal background video starts, fade the scores + WINNER out. */
+#wall.reveal .wallLaneScoreBox,
+#wall.reveal #wallTimer,
+#wall.reveal .wallWinner {
+    opacity: 0;
+}
+
 /* "3-2-1 -> KICK" video, centered across the two lanes at the top of the wall.
    Shows during the countdown and holds "KICK" through gameplay. */
 .wallKick {
@@ -832,6 +846,7 @@ font-size: 100px;
     pointer-events: none;
     z-index: 4;
     display: none;
+    transition: opacity var(--anim-speed);
 }
 
 /* Confetti */

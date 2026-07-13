@@ -8,10 +8,10 @@
 // background until the round resets.
 
 const wallVideos = {
-    idle:     '../videos/idle.mov',
-    flyover:  '../videos/flyover.mov',
-    playing:  '../videos/gameplay.mov',
-    gameover: ''
+    idle:     '../videos/1_idle.webm',
+    flyover:  '../videos/2_flyover.webm',
+    playing:  '../videos/3_gameplay.webm',
+    gameover: '../videos/4_NETFLIX_AND SKILL_REVEAL.webm'
 };
 
 
