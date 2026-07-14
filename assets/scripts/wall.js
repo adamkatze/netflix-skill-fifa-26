@@ -22,6 +22,9 @@ let countdownTimer = null;  // interval for the 3-2-1 start countdown
 let latestScores = {};      // most recent score map, used to pick the winner
 let bgFadeTimer = null;     // setTimeout handle for the background-video crossfade
 let revealWatchdog = null;  // fallback timer so a stalled reveal can't strand the wall
+let musicPlayers = [];      // one preloaded Audio per track in musicTracks
+let musicIndex = -1;        // index of the currently selected track (-1 = none)
+let musicPending = false;   // play() was blocked by autoplay policy — retry on unlock
 
 // Background-video fade duration, in ms. Keep in sync with the CSS opacity
 // transition on #wallVideo (var(--anim-speed), 500ms).
@@ -38,6 +41,7 @@ const STATE_LABELS = {
 
 function initWall() {
     setupWallLayout();
+    initMusic();
     enableAudioOnFirstGesture();
     window.addEventListener('resize', scaleWall);
 
@@ -58,6 +62,11 @@ function initWall() {
 
     // Ask the server for the current round in case we loaded mid-game.
     socket.emit('message', { action: 'registerDisplay' });
+
+    // Pick the initial idle's track right away rather than waiting for the
+    // server's syncState. If a round is actually live, the resulting
+    // setState() stops it; if autoplay blocks it, the unlock gesture retries.
+    startMusic(true);
 }
 
 // Render a static game-over screen (scores, "Game Over!", confetti, WINNER) so
@@ -139,9 +148,113 @@ function enableAudioOnFirstGesture() {
         unlocked = true;
         EVENTS.forEach(evt => window.removeEventListener(evt, unmute));
         console.log('[wall] audio unlocked — videos unmuted');
+
+        // Music that was blocked by autoplay policy can start now.
+        if (musicPending) startMusic(false);
     };
 
     EVENTS.forEach(evt => window.addEventListener(evt, unmute));
+}
+
+
+//--------------------------------- Background music ---------------------------
+
+// Preload every track at page load (kiosk runs locally and rarely refreshes).
+function initMusic() {
+    if (typeof musicTracks === 'undefined' || !musicTracks.length) return;
+
+    musicPlayers = musicTracks.map(function (src) {
+        const a = new Audio(src);
+        a.preload = 'auto';
+        a.loop = true;   // idle longer than the song? the SAME song loops on
+        a.volume = (typeof musicVolume !== 'undefined') ? musicVolume : 1.0;
+        return a;
+    });
+}
+
+// Ramp a player's volume to `target` over musicFadeMs (per-player timer, so a
+// stopping track can fade out while a new one fades in). A new fade on the
+// same player replaces any fade already running on it.
+function fadeTo(player, target, done) {
+    if (player._fade) clearInterval(player._fade);
+    player._fadingOut = target === 0;
+
+    const STEP_MS = 50;
+    const fadeMs = (typeof musicFadeMs !== 'undefined') ? musicFadeMs : 2000;
+    const steps = Math.max(1, Math.round(fadeMs / STEP_MS));
+    const startVol = player.volume;
+    let n = 0;
+
+    player._fade = setInterval(function () {
+        n++;
+        player.volume = Math.min(1, Math.max(0, startVol + (target - startVol) * (n / steps)));
+        if (n >= steps) {
+            clearInterval(player._fade);
+            player._fade = null;
+            player._fadingOut = false;
+            if (done) done();
+        }
+    }, STEP_MS);
+}
+
+// Play the soundtrack. reroll=true picks a fresh random track (never the same
+// one twice in a row) and starts it from the beginning; reroll=false retries
+// the already-selected track (used after the autoplay unlock). Either way the
+// volume fades in from silence.
+function startMusic(reroll) {
+    if (!musicPlayers.length) return;
+
+    if (reroll || musicIndex === -1) {
+        stopMusic();
+        let next = Math.floor(Math.random() * musicPlayers.length);
+        if (musicPlayers.length > 1 && next === musicIndex) {
+            next = (next + 1) % musicPlayers.length;
+        }
+        musicIndex = next;
+        musicPlayers[musicIndex].currentTime = 0;
+    }
+
+    musicPending = false;
+    const player = musicPlayers[musicIndex];
+    player.volume = 0;
+    const played = player.play();
+    if (played && played.catch) {
+        played.catch(function () { musicPending = true; });   // blocked — retry on unlock
+    }
+    fadeTo(player, (typeof musicVolume !== 'undefined') ? musicVolume : 1.0);
+}
+
+// Fade the current track to silence, then pause it. The fade bleeds into the
+// next state (e.g. over the start of the flyover) by design.
+function stopMusic() {
+    musicPending = false;
+    if (musicIndex === -1) return;
+
+    const player = musicPlayers[musicIndex];
+    if (player.paused) return;
+
+    fadeTo(player, 0, function () { player.pause(); });
+}
+
+function musicIsPlaying() {
+    if (musicIndex === -1) return false;
+    const player = musicPlayers[musicIndex];
+    return !player.paused && !player._fadingOut;
+}
+
+// Music plays ONLY during idle and playreveal. The track chosen when the
+// reveal starts carries through the following idle untouched; every other
+// state silences it.
+function updateMusicForState(state) {
+    if (DEBUG) return;   // debug views are for positioning — no music
+
+    if (state === 'playreveal') {
+        startMusic(true);                         // new soundtrack for the sequence
+    } else if (state === 'idle') {
+        if (!musicIsPlaying()) startMusic(true);  // boot / direct-to-idle paths
+    } else {
+        stopMusic();
+    }
 }
 
 
@@ -310,6 +423,8 @@ function setState(state) {
     }
     // KICK video shows during countdown/playing; hide for any other state.
     if (state !== 'playing') hideKickVideo();
+
+    updateMusicForState(state);
 }
 
 

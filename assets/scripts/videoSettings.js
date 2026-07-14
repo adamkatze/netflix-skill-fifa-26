@@ -35,3 +35,16 @@ const winnerVideo = '../videos/WINNER.webm';
 // starts exactly as "KICK" appears.
 const kickCountdownVideo = '../videos/KICK.webm';
 
+
+//------------------------------ Background Music -------------------------------
+// One track is picked at random when the playreveal state starts and keeps
+// looping through the following idle; silent during gameplay. All tracks are
+// preloaded when the wall page loads. Set to [] to disable music.
+const musicTracks = [
+    '../music/es-una-fiesta-drops-latin-house-remix-instrumental-ivy-states-musicbed.wav',
+    '../music/no-estoy-pa-la-venta-instrumental-don-ryvcko-musicbed.wav',
+    '../music/vamanos-instrumental-easy-mccoy-musicbed.wav'
+];
+const musicVolume = 1.0;   // 0..1
+const musicFadeMs = 2000;  // volume fade when music starts/stops
+
