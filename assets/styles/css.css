@@ -201,6 +201,24 @@ body.controlView #app-wrapper {
     pointer-events: none;
 }
 
+/* Buttons on cooldown (e.g. Celebration after a press). */
+body.controlView .cpBtn:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Kiosk touchscreen: no text selection, no long-press callout, no
+   pinch / double-tap zoom on the control panel. */
+body.controlView,
+body.controlView * {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+body.controlView {
+    touch-action: pan-x pan-y;
+}
+
 .cpScoreDisplay {
     display: flex;
     align-items: flex-end;

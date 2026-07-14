@@ -25,7 +25,7 @@ let confettiFinished = false;   // this round's confetti overlay has fully playe
 
 // Background-video fade duration, in ms. Keep in sync with the CSS opacity
 // transition on #wallVideo (var(--anim-speed), 500ms).
-const BG_FADE_MS = 500;
+const BG_FADE_MS = 0;
 
 const STATE_LABELS = {
     idle:     'IDLE',
@@ -85,14 +85,25 @@ function forceDebugKick() {
 
 //--------------------------------- Audio unlock -------------------------------
 
-// Browsers block sound until the page gets a user gesture, and a blocked
-// play() on an unmuted video means it never starts at all. So every player
-// starts muted (autoplay always works) and the first click / keypress / touch
-// unmutes them all for the rest of the session. If Chrome is launched with
-// --autoplay-policy=no-user-gesture-required, the gesture is simply never
-// needed elsewhere — this stays harmless.
+// Browsers block sound until the page has real "user activation", and an
+// unmute attempted without it gets the video PAUSED instead ("Unmuting failed
+// and the element was paused..."). Activation is granted at touchend /
+// pointerup / click / keydown — NOT at touchstart — so listen only for
+// activation-carrying events, verify activation actually exists before
+// unmuting, and stay armed for the next gesture if it doesn't. Every player
+// starts muted so autoplay always works; the first real gesture unmutes them
+// all for the rest of the session. If Chrome is launched with
+// --autoplay-policy=no-user-gesture-required, this stays harmless.
 function enableAudioOnFirstGesture() {
+    const EVENTS = ['click', 'keydown', 'pointerup', 'touchend'];
+    let unlocked = false;
+
     const unmute = function () {
+        if (unlocked) return;
+
+        // No real activation yet (e.g. synthetic event) — wait for the next one.
+        if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+
         document.querySelectorAll('video').forEach(v => {
             const wasPlaying = !v.paused && !v.ended;
             v.muted = false;
@@ -103,11 +114,13 @@ function enableAudioOnFirstGesture() {
                 if (played && played.catch) played.catch(() => {});
             }
         });
+
+        unlocked = true;
+        EVENTS.forEach(evt => window.removeEventListener(evt, unmute));
         console.log('[wall] audio unlocked — videos unmuted');
     };
-    ['click', 'keydown', 'touchstart'].forEach(evt =>
-        window.addEventListener(evt, unmute, { once: true })
-    );
+
+    EVENTS.forEach(evt => window.addEventListener(evt, unmute));
 }
 
 
@@ -142,7 +155,7 @@ function updateBackgroundVideo(state) {
 
     // Fade out, then swap the source and fade back in once it has a frame.
     if (bgFadeTimer) clearTimeout(bgFadeTimer);
-    video.style.opacity = '0';
+    video.style.opacity = '1'; //was 1
 
     bgFadeTimer = setTimeout(function () {
         video.src = src;
@@ -153,7 +166,7 @@ function updateBackgroundVideo(state) {
 
         const fadeIn = function () { video.style.opacity = '1'; };
         video.oncanplay = fadeIn;   // fade in as soon as the new video can render
-        setTimeout(fadeIn, 300);    // fallback in case 'canplay' doesn't fire
+        setTimeout(fadeIn, 0);    // fallback in case 'canplay' doesn't fire
     }, BG_FADE_MS);
 }
 

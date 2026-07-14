@@ -268,9 +268,21 @@ function addScore(delta) {
     sendCommand('updateScore', { lane: myLane, delta: delta });
 }
 
-// Show a celebration on the game wall.
+// Show a celebration on the game wall (max once per cooldown window, so the
+// button can't be spammed).
+const CELEBRATE_COOLDOWN_MS = 1000;
+let celebrateCooldownUntil = 0;
+
 function triggerCelebration() {
+    if (performance.now() < celebrateCooldownUntil) return;
+    celebrateCooldownUntil = performance.now() + CELEBRATE_COOLDOWN_MS;
+
     sendCommand('celebrate', { lane: myLane });
+
+    // The help modal holds a decorative copy of this button — scope to the panel.
+    const btn = $('#controlPanel .cpCelebrate');
+    btn.prop('disabled', true);
+    setTimeout(function () { btn.prop('disabled', false); }, CELEBRATE_COOLDOWN_MS);
 }
 
 // Render this lane's score from the server's authoritative map.
