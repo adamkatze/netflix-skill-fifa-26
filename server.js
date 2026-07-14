@@ -1,7 +1,8 @@
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
-const sqlite3 = require('sqlite3').verbose();
+const { DatabaseSync } = require('node:sqlite');
+const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
@@ -9,46 +10,52 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
+// When packaged as an exe (pkg), live files sit next to the binary; in dev
+// they're the project directory. Everything on disk (index.html, assets/, db/)
+// resolves from here so artwork and pages can change without a rebuild.
+const BASE_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
+
 
 //Used for determining servers local ip address
 const networkInterfaces = os.networkInterfaces();
 const addresses = [];
 
-//Serve local files from the project directory
-const staticPath = path.join(__dirname, '/');
+//Serve local files from the folder the server runs from
+const staticPath = path.join(BASE_DIR, '/');
 app.use(express.static(staticPath));
 
 
 //Database stuff
 
-// Connect to the SQLite database
-const db = new sqlite3.Database('db/database.db');
+// Connect to the SQLite database, creating db/ on first launch so a freshly
+// shipped exe self-initializes with clean tables.
+const dbDir = path.join(BASE_DIR, 'db');
+fs.mkdirSync(dbDir, { recursive: true });
+const db = new DatabaseSync(path.join(dbDir, 'database.db'));
 
 function initDatabaseTable(tableName, tableFields, tableRoute) {
 
-  db.run(`
+  try {
+    db.exec(`
       CREATE TABLE IF NOT EXISTS ${tableName} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ${tableFields}
       )
-    `, error => {
-      if (error) {
-        console.error('Error creating table:', error.message);
-      } else {
-        console.log(`Table "${tableName}" created or already exists`);
-      }
-  });
+    `);
+    console.log(`Table "${tableName}" created or already exists`);
+  } catch (error) {
+    console.error('Error creating table:', error.message);
+  }
 
   //Route to fetch data from the table
   app.get(`/${tableRoute}`, (req, res) => {
-        db.all(`SELECT * FROM ${tableName}`, (error, rows) => {
-          if (error) {
-            console.error('Error reading data:', error.message);
-            res.status(500).send('Error reading data');
-          } else {
-            res.json(rows);
-          }
-        });
+        try {
+          const rows = db.prepare(`SELECT * FROM ${tableName}`).all();
+          res.json(rows);
+        } catch (error) {
+          console.error('Error reading data:', error.message);
+          res.status(500).send('Error reading data');
+        }
   });
 
 }
@@ -63,20 +70,23 @@ initDatabaseTable('leaderboard', leaderboardFields, 'leaderboard')
 // Add any missing columns to an existing table (CREATE TABLE IF NOT EXISTS
 // won't alter a table that already exists from a previous run).
 function ensureColumns(tableName, columns) {
-  db.all(`PRAGMA table_info(${tableName})`, (error, rows) => {
-    if (error) {
-      console.error('Error reading table info:', error.message);
-      return;
-    }
-    const existing = rows.map(r => r.name);
-    columns.forEach(col => {
-      if (!existing.includes(col.name)) {
-        db.run(`ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}`, err => {
-          if (err) console.error(`Error adding column ${col.name}:`, err.message);
-          else console.log(`Added column "${col.name}" to "${tableName}"`);
-        });
+  let rows;
+  try {
+    rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  } catch (error) {
+    console.error('Error reading table info:', error.message);
+    return;
+  }
+  const existing = rows.map(r => r.name);
+  columns.forEach(col => {
+    if (!existing.includes(col.name)) {
+      try {
+        db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}`);
+        console.log(`Added column "${col.name}" to "${tableName}"`);
+      } catch (err) {
+        console.error(`Error adding column ${col.name}:`, err.message);
       }
-    });
+    }
   });
 }
 
@@ -321,16 +331,16 @@ function logGame() {
         game_length_ms: playLength
     };
 
-    db.run(
-        `INSERT INTO analytics
-           (action, started_at, lane1_score, lane2_score, lane1_active, lane2_active, game_length_ms)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [row.action, row.started_at, row.lane1_score, row.lane2_score, row.lane1_active, row.lane2_active, row.game_length_ms],
-        err => {
-            if (err) console.error('Error logging game:', err.message);
-            else console.log('Logged game to analytics:', row);
-        }
-    );
+    try {
+        db.prepare(
+            `INSERT INTO analytics
+               (action, started_at, lane1_score, lane2_score, lane1_active, lane2_active, game_length_ms)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).run(row.action, row.started_at, row.lane1_score, row.lane2_score, row.lane1_active, row.lane2_active, row.game_length_ms);
+        console.log('Logged game to analytics:', row);
+    } catch (err) {
+        console.error('Error logging game:', err.message);
+    }
 }
 
 // Once every panel has left the result screen (back to holding / disconnected),
@@ -541,28 +551,33 @@ function sendCommand(command,id,data) {
       console.log(sql);
       console.log("With values:", cleanValues);
 
-  
-      db.run(sql, cleanValues, function(err) {
-        if (err) {
-          console.error("DB Error:", err);
-        } else {
-          console.log(`Row updated (ID: ${rowId})`);
-        }
-      });
-  
+
+      try {
+        db.prepare(sql).run(...cleanValues);
+        console.log(`Row updated (ID: ${rowId})`);
+      } catch (err) {
+        console.error("DB Error:", err);
+      }
+
 
       } else {
 
         let len = tableFields.split(',').length
         let def = ""
         for (let i = 0; i < len; i++) {
-        def = def + '?, ' 
+        def = def + '?, '
         }
         def = def.slice(0, -2);
-    
+
         console.log(`logging ${tableValues} to table ${tableName}`)
-    
-        db.run(`INSERT INTO ${tableName} (${tableFields}) VALUES (${def})`, tableValues );
+
+        // node:sqlite rejects undefined parameters — coerce to null.
+        const cleanInsertValues = tableValues.map(value => value === undefined ? null : value);
+        try {
+          db.prepare(`INSERT INTO ${tableName} (${tableFields}) VALUES (${def})`).run(...cleanInsertValues);
+        } catch (err) {
+          console.error("DB Error:", err);
+        }
     }
 
 }
