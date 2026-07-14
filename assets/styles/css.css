@@ -673,8 +673,9 @@ button.cpBtn.cpRestart.blackButton {
     flex-direction: column;
 }
 
-/* Hide the game UI (timer + lanes) until play begins. During idle, flyover
-   and the start countdown, only the background video (and the countdown) show. */
+/* Hide the game UI (timer + lanes) until play begins. During idle, flyover,
+   the start countdown, and the playreveal video, only the background video
+   (and the countdown) show. */
 .wallTop,
 .wallLanes {
     transition: opacity var(--anim-speed);
@@ -684,7 +685,9 @@ button.cpBtn.cpRestart.blackButton {
 #wall[data-state="flyover"] .wallTop,
 #wall[data-state="flyover"] .wallLanes,
 #wall[data-state="countdown"] .wallTop,
-#wall[data-state="countdown"] .wallLanes {
+#wall[data-state="countdown"] .wallLanes,
+#wall[data-state="playreveal"] .wallTop,
+#wall[data-state="playreveal"] .wallLanes {
     opacity: 0;
     visibility: hidden;
 }
@@ -701,13 +704,6 @@ button.cpBtn.cpRestart.blackButton {
 #wall[data-state="gameover"] .wallLaneScoreBox,
 #wall[data-state="gameover"] #wallTimer {
     opacity: 1;
-}
-
-/* Once the reveal background video starts, fade the scores + WINNER out. */
-#wall.reveal .wallLaneScoreBox,
-#wall.reveal #wallTimer,
-#wall.reveal .wallWinner {
-    opacity: 0;
 }
 
 /* "3-2-1 -> KICK" video, centered across the two lanes at the top of the wall.

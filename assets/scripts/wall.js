@@ -15,23 +15,24 @@ const LANES = ['1', '2'];
 // positioned manually.
 const DEBUG = new URLSearchParams(window.location.search).has('debug');
 
-let wallState = 'idle';     // 'idle' | 'flyover' | 'countdown' | 'playing' | 'gameover'
+let wallState = 'idle';     // 'idle' | 'flyover' | 'countdown' | 'playing' | 'gameover' | 'playreveal'
 let timerEnd = 0;           // performance.now() timestamp the countdown ends at
 let timerInterval = null;
 let countdownTimer = null;  // interval for the 3-2-1 start countdown
 let latestScores = {};      // most recent score map, used to pick the winner
 let bgFadeTimer = null;     // setTimeout handle for the background-video crossfade
-let confettiFinished = false;   // this round's confetti overlay has fully played
+let revealWatchdog = null;  // fallback timer so a stalled reveal can't strand the wall
 
 // Background-video fade duration, in ms. Keep in sync with the CSS opacity
 // transition on #wallVideo (var(--anim-speed), 500ms).
 const BG_FADE_MS = 0;
 
 const STATE_LABELS = {
-    idle:     'IDLE',
-    flyover:  'FLYOVER',
-    playing:  'PLAYING',
-    gameover: 'GAME OVER'
+    idle:       'IDLE',
+    flyover:    'FLYOVER',
+    playing:    'PLAYING',
+    gameover:   'GAME OVER',
+    playreveal: 'REVEAL'
 };
 
 
@@ -42,11 +43,13 @@ function initWall() {
 
     // Debug: skip live updates and hold a state so overlay videos can be
     // positioned in CSS. ?debug=gameover (default) shows confetti + WINNER;
-    // ?debug=kick shows the KICK countdown video. ?winner=1|2 picks the side.
+    // ?debug=kick shows the KICK countdown video; ?debug=playreveal shows the
+    // bare reveal video. ?winner=1|2 picks the side.
     if (DEBUG) {
         const mode = new URLSearchParams(window.location.search).get('debug');
         console.log('[wall] DEBUG mode — frozen view for positioning (mode=' + (mode || 'gameover') + ')');
         if (mode === 'kick') forceDebugKick();
+        else if (mode === 'playreveal') forceDebugPlayReveal();
         else forceDebugGameOver();
         return;
     }
@@ -66,8 +69,26 @@ function forceDebugGameOver() {
     setState('gameover');
     stopTimer();
     renderTimerMs(0);
+
+    // Debug: loop the confetti so the frozen celebration never advances to
+    // the reveal (its 'ended' handler never fires).
+    const ov = document.getElementById('wallOverlay');
+    if (ov) ov.loop = true;
+
     playGameOverOverlay();
     showWinner();
+}
+
+// Render the playreveal state frozen (bare reveal video, all UI hidden) so it
+// can be checked without running a live round. Loops instead of auto-idling.
+function forceDebugPlayReveal() {
+    updateScores({ '1': 7, '2': 3 });
+    setState('playreveal');
+    stopTimer();
+    renderTimerMs(0);
+
+    const v = document.getElementById('wallVideo');
+    if (v) v.loop = true;
 }
 
 // Render the playing state and play the KICK countdown video so it can be
@@ -211,16 +232,21 @@ function listenForServer() {
 
             // The round ended.
             case 'endGame':
+                if (wallState === 'playreveal') break;   // reveal already running (timeup path)
                 setState('gameover');
                 stopTimer();
                 renderTimerMs(0);
                 playGameOverOverlay();
                 showWinner();
+                if (!gameOverOverlayVideo) enterPlayReveal();   // no confetti configured
                 break;
 
             // Panels returned to idle — clear the board and go back to idle.
+            // The game-over sequence (confetti → reveal → idle) self-completes,
+            // so an early panel reset must not cut it short.
             case 'resetIdle':
-                if (DEBUG) break;   // debug: stay on game-over for manual positioning
+                if (DEBUG) break;   // debug: stay frozen for manual positioning
+                if (wallState === 'gameover' || wallState === 'playreveal') break;
                 setState('idle');
                 stopTimer();
                 renderTimerMs(0);
@@ -270,22 +296,69 @@ function setState(state) {
     $('#wall').removeClass('timeup');   // cleared here; re-added when the timer hits 0
     $('#wallState').text(STATE_LABELS[state] || state);
 
-    // Game over keeps the gameplay background looping while the confetti
-    // overlay plays once; the overlay's 'ended' handler swaps in the reveal.
-    if (state !== 'gameover') {
-        updateBackgroundVideo(state);
-    } else if (!gameOverOverlayVideo || confettiFinished) {
-        showRevealBackground();
-    }
+    // Any state but the reveal restores the background player's looping
+    // default (must happen before the source swaps below).
+    if (state !== 'playreveal') clearRevealPlayback();
+
+    // 'gameover' has no video configured (empty string), so the gameplay
+    // video naturally keeps looping under the confetti.
+    updateBackgroundVideo(state);
 
     if (state !== 'gameover') {
         hideGameOverOverlay();
         hideWinner();
-        $('#wall').removeClass('reveal');   // scores come back for the next round
-        confettiFinished = false;   // new round — confetti must gate the reveal again
     }
     // KICK video shows during countdown/playing; hide for any other state.
     if (state !== 'playing') hideKickVideo();
+}
+
+
+//--------------------------------- Reveal state --------------------------------
+
+// Confetti finished — play the reveal video once, bare (no UI), then return to
+// idle on our own. The panels' resetIdle is ignored during the sequence.
+function enterPlayReveal() {
+    const hasReveal = typeof wallVideos !== 'undefined' && wallVideos.playreveal;
+    if (!hasReveal) { goIdle(); return; }
+
+    setState('playreveal');
+
+    const v = document.getElementById('wallVideo');
+    if (!v) return;
+    v.loop = false;
+    v.onended = goIdle;
+
+    // Watchdog: if playback stalls and 'ended' never fires, idle anyway.
+    const arm = function () {
+        if (wallState !== 'playreveal') return;
+        if (revealWatchdog) clearTimeout(revealWatchdog);
+        const duration = isFinite(v.duration) && v.duration > 0 ? v.duration : 35;
+        revealWatchdog = setTimeout(goIdle, duration * 1000 + 3000);
+    };
+    if (isFinite(v.duration) && v.duration > 0) arm();
+    else v.onloadedmetadata = arm;
+}
+
+// The reveal finished (or was never configured) — clear the board and idle.
+function goIdle() {
+    if (wallState !== 'playreveal' && wallState !== 'gameover') return;
+    setState('idle');
+    stopTimer();
+    renderTimerMs(0);
+    resetScores();
+}
+
+// Restore the background player's default looping behavior after the reveal.
+function clearRevealPlayback() {
+    if (revealWatchdog) {
+        clearTimeout(revealWatchdog);
+        revealWatchdog = null;
+    }
+    const v = document.getElementById('wallVideo');
+    if (!v) return;
+    v.onended = null;
+    v.onloadedmetadata = null;
+    if (!DEBUG) v.loop = true;   // debug views manage looping themselves
 }
 
 
@@ -301,29 +374,21 @@ function playGameOverOverlay() {
         v.src = gameOverOverlayVideo;
         v.dataset.loaded = '1';
     }
-    confettiFinished = false;
     v.dataset.playing = '1';
     v.style.display = 'block';
     v.currentTime = 0;
 
-    // Plays once; when it finishes, hide it and swap the background from the
-    // looping gameplay video to the game-over reveal.
+    // Plays once; when it finishes, hide it and advance to the playreveal
+    // state. (In debug the overlay loops, so this never fires.)
     v.onended = v.onerror = function () {
-        confettiFinished = true;
         hideGameOverOverlay();
         if (wallState === 'gameover' || $('#wall').hasClass('timeup')) {
-            showRevealBackground();
+            enterPlayReveal();
         }
     };
 
     const played = v.play();
     if (played && played.catch) played.catch(() => {});
-}
-
-// Swap the background to the game-over reveal and hide the scores under it.
-function showRevealBackground() {
-    $('#wall').addClass('reveal');
-    updateBackgroundVideo('gameover');
 }
 
 function hideGameOverOverlay() {
