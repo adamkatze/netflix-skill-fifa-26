@@ -145,7 +145,7 @@ const GAME_LENGTH_MS = 120 * 1000;
 
 // Length of the intro "flyover" animation before the timer actually begins.
 // Adjust once we know the real animation length.
-const FLYOVER_MS = 10 * 1000;
+const FLYOVER_MS = 11600;   // actual duration of assets/videos/2_flyover.webm
 
 // Length of the 3-2-1 countdown between the flyover and the game timer starting.
 const COUNTDOWN_MS = 5 * 1000;

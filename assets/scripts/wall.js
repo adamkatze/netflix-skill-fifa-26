@@ -292,6 +292,8 @@ function updateBackgroundVideo(state) {
 
     // Prepare the inactive video with the new source
     inactiveVideo.dataset.state = state;
+    // Flyover plays once and holds its last frame; every other state loops.
+    inactiveVideo.loop = (state !== 'flyover');
     inactiveVideo.src = src;
     inactiveVideo.load();
 
