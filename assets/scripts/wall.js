@@ -580,6 +580,17 @@ function hideWinner() {
 //--------------------------- KICK countdown video -----------------------------
 
 // Plays the "3-2-1 -> KICK" video (does not loop; holds "KICK" on its last frame).
+let kickSoundPlayer = null;
+
+function getKickSoundPlayer() {
+    if (typeof kickCountdownSound === 'undefined' || !kickCountdownSound) return null;
+    if (!kickSoundPlayer) {
+        kickSoundPlayer = new Audio(kickCountdownSound);
+        kickSoundPlayer.preload = 'auto';
+    }
+    return kickSoundPlayer;
+}
+
 function playKickVideo() {
     const v = document.getElementById('wallKick');
     if (!v || !kickCountdownVideo) return;
@@ -595,6 +606,13 @@ function playKickVideo() {
 
     const played = v.play();
     if (played && played.catch) played.catch(() => {});
+
+    const sfx = getKickSoundPlayer();
+    if (sfx) {
+        sfx.currentTime = 0;
+        const sfxPlayed = sfx.play();
+        if (sfxPlayed && sfxPlayed.catch) sfxPlayed.catch(() => {});
+    }
 }
 
 function hideKickVideo() {
@@ -603,6 +621,12 @@ function hideKickVideo() {
     v.pause();
     v.style.display = 'none';
     v.dataset.playing = '0';
+
+    const sfx = getKickSoundPlayer();
+    if (sfx) {
+        sfx.pause();
+        sfx.currentTime = 0;
+    }
 }
 
 

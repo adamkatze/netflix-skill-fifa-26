@@ -36,6 +36,10 @@ const winnerVideo = '../videos/WINNER.webm';
 const kickCountdownVideo = '../videos/KICK.webm';
 
 
+// Sound effect played in sync with the KICK countdown video. Set '' to disable.
+const kickCountdownSound = '../music/GAMEPLAY_CountdownKick.wav';
+
+
 //------------------------------ Background Music -------------------------------
 // One track is picked at random when the playreveal state starts and keeps
 // looping through the following idle; silent during gameplay. All tracks are
