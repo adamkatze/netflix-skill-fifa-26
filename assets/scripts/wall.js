@@ -21,6 +21,7 @@ let timerInterval = null;
 let countdownTimer = null;  // interval for the 3-2-1 start countdown
 let latestScores = {};      // most recent score map, used to pick the winner
 let bgFadeTimer = null;     // setTimeout handle for the background-video crossfade
+let activeVideoId = 'wallVideo';  // Track which video is currently active ('wallVideo' or 'wallVideo2')
 let revealWatchdog = null;  // fallback timer so a stalled reveal can't strand the wall
 let musicPlayers = [];      // one preloaded Audio per track in musicTracks
 let musicIndex = -1;        // index of the currently selected track (-1 = none)
@@ -96,7 +97,7 @@ function forceDebugPlayReveal() {
     stopTimer();
     renderTimerMs(0);
 
-    const v = document.getElementById('wallVideo');
+    const v = document.getElementById(activeVideoId);
     if (v) v.loop = true;
 }
 
@@ -275,33 +276,53 @@ function setupWallLayout() {
     scaleWall();
 }
 
-// Swap the fullscreen background video to match the current state, fading out
-// the old source and fading in the new one. States with no configured video
-// (empty string) keep whatever is already playing.
+// Swap the fullscreen background video to match the current state using dual
+// video elements and z-index swapping to eliminate black flicker.
 function updateBackgroundVideo(state) {
     const src = (typeof wallVideos !== 'undefined') ? wallVideos[state] : null;
     if (!src) return;
 
-    const video = document.getElementById('wallVideo');
-    if (!video || video.dataset.state === state) return;
+    // Get both video elements
+    const activeVideo = document.getElementById(activeVideoId);
+    const inactiveVideoId = activeVideoId === 'wallVideo' ? 'wallVideo2' : 'wallVideo';
+    const inactiveVideo = document.getElementById(inactiveVideoId);
 
-    video.dataset.state = state;
+    if (!activeVideo || !inactiveVideo) return;
+    if (activeVideo.dataset.state === state) return;  // Already playing this state
 
-    // Fade out, then swap the source and fade back in once it has a frame.
-    if (bgFadeTimer) clearTimeout(bgFadeTimer);
-    video.style.opacity = '1'; //was 1
+    // Prepare the inactive video with the new source
+    inactiveVideo.dataset.state = state;
+    inactiveVideo.src = src;
+    inactiveVideo.load();
 
-    bgFadeTimer = setTimeout(function () {
-        video.src = src;
-        video.load();
+    // When the new video is ready, swap the z-indexes
+    const swapVideos = function () {
+        // Swap active class for z-index management
+        activeVideo.classList.remove('active');
+        inactiveVideo.classList.add('active');
 
-        const played = video.play();
-        if (played && played.catch) played.catch(() => {});   // ignore autoplay blocks
+        // Update the active video tracker
+        activeVideoId = inactiveVideoId;
 
-        const fadeIn = function () { video.style.opacity = '1'; };
-        video.oncanplay = fadeIn;   // fade in as soon as the new video can render
-        setTimeout(fadeIn, 0);    // fallback in case 'canplay' doesn't fire
-    }, BG_FADE_MS);
+        // Stop the now-hidden video to free resources
+        setTimeout(function() {
+            activeVideo.pause();
+            activeVideo.src = '';  // Clear source to free memory
+        }, 100);
+    };
+
+    // Start playing the new video and swap when ready
+    const played = inactiveVideo.play();
+    if (played && played.catch) {
+        played.then(swapVideos).catch(() => {
+            // If autoplay fails, swap anyway
+            swapVideos();
+        });
+    } else {
+        // Fallback for browsers without promise support
+        inactiveVideo.oncanplay = swapVideos;
+        setTimeout(swapVideos, 100);  // Failsafe
+    }
 }
 
 // Fit the fixed-size wall canvas into the browser window, centered.
@@ -409,7 +430,7 @@ function setState(state) {
     $('#wall').removeClass('timeup');   // cleared here; re-added when the timer hits 0
     $('#wallState').text(STATE_LABELS[state] || state);
 
-    // Any state but the reveal restores the background player's looping
+    // Any state but the reveal restores the background players' looping
     // default (must happen before the source swaps below).
     if (state !== 'playreveal') clearRevealPlayback();
 
@@ -438,7 +459,8 @@ function enterPlayReveal() {
 
     setState('playreveal');
 
-    const v = document.getElementById('wallVideo');
+    // Get the currently active video
+    const v = document.getElementById(activeVideoId);
     if (!v) return;
     v.loop = false;
     v.onended = goIdle;
@@ -463,17 +485,20 @@ function goIdle() {
     resetScores();
 }
 
-// Restore the background player's default looping behavior after the reveal.
+// Restore the background players' default looping behavior after the reveal.
 function clearRevealPlayback() {
     if (revealWatchdog) {
         clearTimeout(revealWatchdog);
         revealWatchdog = null;
     }
-    const v = document.getElementById('wallVideo');
-    if (!v) return;
-    v.onended = null;
-    v.onloadedmetadata = null;
-    if (!DEBUG) v.loop = true;   // debug views manage looping themselves
+    // Reset both video elements
+    ['wallVideo', 'wallVideo2'].forEach(id => {
+        const v = document.getElementById(id);
+        if (!v) return;
+        v.onended = null;
+        v.onloadedmetadata = null;
+        if (!DEBUG) v.loop = true;   // debug views manage looping themselves
+    });
 }
 
 

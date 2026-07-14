@@ -637,9 +637,9 @@ button.cpBtn.cpRestart.blackButton {
     transform-origin: top left;
     background: var(--darkgrey-bg);
 }
-/* Fullscreen background video spanning the entire wall, behind the UI.
-   Fades out/in when switching sources between states (see wall.js). */
-#wallVideo {
+/* Fullscreen background videos spanning the entire wall, behind the UI.
+   Two videos enable seamless transitions via z-index swapping. */
+.wallBgVideo {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -648,7 +648,14 @@ button.cpBtn.cpRestart.blackButton {
     z-index: 0;
     background: var(--darkgrey-bg);
     opacity: 1;
-    transition: opacity var(--anim-speed);
+}
+/* Active video is on top */
+.wallBgVideo.active {
+    z-index: 1;
+}
+/* Legacy ID selector for compatibility */
+#wallVideo, #wallVideo2 {
+    /* Inherits all styles from .wallBgVideo */
 }
 /* Transparent game-over overlay video — spans the whole wall, above the
    background video and the UI. No background so its alpha channel shows through. */
