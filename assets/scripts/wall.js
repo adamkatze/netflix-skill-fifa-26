@@ -321,14 +321,18 @@ function updateBackgroundVideo(state) {
     }
 }
 
-// Fill the screen height and anchor the wall to the right edge; any unused
-// width (e.g. a 16:9 4K TV showing the 1.5:1 canvas) is left as a black gap
-// on the left, and on narrower screens the excess crops off the left.
+// Fill the screen height and anchor the wall to the right edge. On screens
+// wider than wallWidth the stage widens (up to the full wallVideoWidth video)
+// to reveal more of the background video's left side; black only appears
+// beyond that. On narrower screens the excess crops off the left.
 function scaleWall() {
     const stage = document.getElementById('wallStage');
     const scale = window.innerHeight / wallHeight;
 
-    const offsetX = window.innerWidth - wallWidth * scale;
+    const stageWidth = Math.min(Math.max(wallWidth, window.innerWidth / scale), wallVideoWidth);
+    stage.style.width = stageWidth + 'px';
+
+    const offsetX = window.innerWidth - stageWidth * scale;
 
     stage.style.transform = `translate(${offsetX}px, 0px) scale(${scale})`;
 }

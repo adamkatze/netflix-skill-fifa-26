@@ -20,6 +20,11 @@ const gameLength = 12000;
 const wallWidth = 3120
 const wallHeight = 2080
 
+// Full width of the authored background videos. On screens wider than
+// wallWidth the stage widens (up to this) to reveal more of the video's left
+// side instead of leaving a black gap.
+const wallVideoWidth = 6240
+
 // The region of the wall the game UI occupies. It is aligned to the RIGHT edge
 // of the wall; the remaining width to the left is left empty for now.
 const gameAreaWidth = 2496
