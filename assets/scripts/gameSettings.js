@@ -14,8 +14,10 @@ const gameLength = 12000;
 
 
 //------------------------------Display Wall Settings-----------------------------
-// Full dimensions of the physical wall panel, in px.
-const wallWidth = 6240
+// Full dimensions of the wall canvas, in px. This is the right half of the
+// original 6240-wide wall artwork, sized for a 4K TV output; the 6240x2080
+// videos are cropped to their right half via object-position in the CSS.
+const wallWidth = 3120
 const wallHeight = 2080
 
 // The region of the wall the game UI occupies. It is aligned to the RIGHT edge

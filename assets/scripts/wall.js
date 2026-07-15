@@ -321,15 +321,16 @@ function updateBackgroundVideo(state) {
     }
 }
 
-// Fit the fixed-size wall canvas into the browser window, centered.
+// Fill the screen height and anchor the wall to the right edge; any unused
+// width (e.g. a 16:9 4K TV showing the 1.5:1 canvas) is left as a black gap
+// on the left, and on narrower screens the excess crops off the left.
 function scaleWall() {
     const stage = document.getElementById('wallStage');
-    const scale = Math.min(window.innerWidth / wallWidth, window.innerHeight / wallHeight);
+    const scale = window.innerHeight / wallHeight;
 
-    const offsetX = (window.innerWidth - wallWidth * scale) / 2;
-    const offsetY = (window.innerHeight - wallHeight * scale) / 2;
+    const offsetX = window.innerWidth - wallWidth * scale;
 
-    stage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    stage.style.transform = `translate(${offsetX}px, 0px) scale(${scale})`;
 }
 
 

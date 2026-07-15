@@ -622,6 +622,9 @@ button.cpBtn.cpRestart.blackButton {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* Videos are authored at the full 6240px wall width; show their right
+       half in the narrower canvas instead of the default center crop. */
+    object-position: top right;
     z-index: 0;
     background: var(--darkgrey-bg);
     opacity: 1;
@@ -642,6 +645,7 @@ button.cpBtn.cpRestart.blackButton {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: top right;
     z-index: 2;
     pointer-events: none;
     display: none;
