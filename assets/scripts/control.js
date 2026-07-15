@@ -14,7 +14,7 @@
 
 let myLane = null;
 let controlState = 'holding';
-let gamePhase = null;          // 'flyover' | 'active'
+let gamePhase = null;          // 'countdown' | 'active'
 let gameInProgress = false;    // is a round live somewhere (even if not ours)?
 let myScore = 0;
 let latestScores = {};         // most recent full score map from the server
@@ -51,16 +51,16 @@ function listenForServer() {
 
     socket.on('message', (data) => {
 
-        // A round is starting — advance into the control panel and play the
-        // flyover intro, but only if this lane is one of the participants.
+        // A round is starting — advance into the control panel and show the
+        // 3-2-1 countdown, but only if this lane is one of the participants.
         if (data.action === 'startGame') {
             gameInProgress = true;
             if (laneIsPlaying(data.data && data.data.lanes)) {
-                advanceToControlPanel(data.data && data.data.flyover);
+                advanceToControlPanel(data.data && data.data.countdown);
             }
         }
 
-        // Flyover finished — the 3-2-1 countdown before the game timer starts.
+        // The 3-2-1 countdown before the game timer starts.
         if (data.action === 'countdown') {
             gameInProgress = true;
             if (controlState === 'game') startCountdownPhase(data.data && data.data.duration);
@@ -82,10 +82,10 @@ function listenForServer() {
             updateScoreDisplay(data.data.scores);
         }
 
-        // The game was restarted — fade out and replay from the flyover.
+        // The game was restarted — fade out and replay from the countdown.
         if (data.action === 'restartGame') {
             gameInProgress = true;
-            if (controlState === 'game') handleRestart(data.data && data.data.flyover);
+            if (controlState === 'game') handleRestart(data.data && data.data.countdown);
         }
 
         // The game was ended — close out the panel (only if we were playing).
@@ -139,26 +139,19 @@ function cancelWaiting() {
 
 
 // Triggered by the server once every lane is waiting.
-function advanceToControlPanel(flyoverDuration) {
+function advanceToControlPanel(countdownDuration) {
     if (controlState === 'game') return;
 
     controlState = 'game';
     $('#cpLaneNum').text(myLane || '?');
     animateSwap('#waiting', '#controlPanel', menuAnimSpeed, 0, animatingMenu);
 
-    startFlyover(flyoverDuration ?? flyoverLength);
+    // The server's 'countdown' broadcast follows immediately and re-syncs this.
+    startCountdownPhase(countdownDuration);
 }
 
 
 //--------------------------------- Game phases --------------------------------
-
-// Intro animation phase — counts down to the game start; Skip Flyover is shown.
-function startFlyover(durationMs) {
-    gamePhase = 'flyover';
-    $('#controlPanel').attr('data-phase', 'flyover');
-    $('#cpTimerLabel').text('Game Starts In');
-    startTimer(durationMs ?? flyoverLength);
-}
 
 // Countdown phase — the 3-2-1 before the game timer. Scoring stays disabled and
 // the game timer is held until the server's 'beginGame' message.
@@ -177,15 +170,6 @@ function beginGame(durationMs) {
     startTimer(durationMs ?? gameLength);
 }
 
-// Skip Flyover button — confirm, then ask the server to start the game now.
-function skipFlyover() {
-    if (gamePhase !== 'flyover') return;
-    askConfirm('Skip the flyover and start the game now?', function() {
-        if (gamePhase !== 'flyover') return;
-        sendCommand('skipFlyover', { lane: myLane });
-    }, 'Skip Flyover');
-}
-
 // True if this lane is in the participant list for a starting round.
 // (Older messages without a lanes list are treated as applying to everyone.)
 function laneIsPlaying(lanes) {
@@ -202,8 +186,8 @@ function promptJoinGame() {
 
 
 // "Skip to game for solo play" button (waiting screen). Starts the round on the
-// server (without waiting for the other lane) so the flyover, Skip Flyover, and
-// auto-begin all run through the same server-driven lifecycle.
+// server (without waiting for the other lane) so the countdown and auto-begin
+// all run through the same server-driven lifecycle.
 function skipToSolo() {
     sendCommand('startSolo', { lane: myLane });
 }
@@ -221,9 +205,7 @@ function rejoinLiveGame(phase, duration, scores) {
 
     updateScoreDisplay(scores);
 
-    if (phase === 'flyover') {
-        startFlyover(duration);
-    } else if (phase === 'countdown') {
+    if (phase === 'countdown') {
         startCountdownPhase(duration);
     } else {
         beginGame(duration);
@@ -337,7 +319,7 @@ function clearPoints() {
     });
 }
 
-// Restart Game — replay the round from the start of the flyover (after confirmation).
+// Restart Game — replay the round from the countdown (after confirmation).
 function restartGame() {
     askConfirm('Restart the game from the beginning?', function() {
         sendCommand('restartGame', { lane: myLane });
@@ -351,14 +333,14 @@ function endGame() {
     });
 }
 
-// Server told every lane to restart — fade the panel out, then replay the flyover.
-function handleRestart(flyoverDuration) {
+// Server told every lane to restart — fade the panel out, then replay the countdown.
+function handleRestart(countdownDuration) {
     controlState = 'game';
 
     $('#controlPanel').removeClass('animIn');           // fade out
     setTimeout(function() {
         $('#controlPanel').addClass('animIn');          // fade back in
-        startFlyover(flyoverDuration ?? flyoverLength);
+        startCountdownPhase(countdownDuration);
     }, menuAnimSpeed);
 }
 

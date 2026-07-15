@@ -4,15 +4,17 @@
 // (assets/html/game.html) — e.g. '../videos/idle.mp4' -> assets/videos/idle.mp4
 //
 // Leave a value as '' (empty) to keep whatever video is already playing for
-// that state — e.g. by default "gameover" simply keeps the idle/gameplay
+// that state — e.g. by default "gameover" simply keeps the gameplay
 // background until the round resets.
+//
+// idle and playing share the gameplay video: it loops continuously through
+// the whole experience (the player is smart enough not to reload the file
+// when two states point at the same one).
 
 const wallVideos = {
-    idle:     '../videos/1_idle.webm',
-    flyover:  '../videos/2_flyover.webm',
+    idle:     '../videos/3_gameplay.webm',
     playing:  '../videos/3_gameplay.webm',
-    gameover: '',
-    playreveal: '../videos/4_NETFLIX_AND SKILL_REVEAL.webm'
+    gameover: ''
 };
 
 
@@ -41,8 +43,8 @@ const kickCountdownSound = '../music/GAMEPLAY_CountdownKick.wav';
 
 
 //------------------------------ Background Music -------------------------------
-// One track is picked at random when the playreveal state starts and keeps
-// looping through the following idle; silent during gameplay. All tracks are
+// One track is picked at random each time the wall returns to idle and keeps
+// looping until a round starts; silent during gameplay. All tracks are
 // preloaded when the wall page loads. Set to [] to disable music.
 const musicTracks = [
     '../music/es-una-fiesta-drops-latin-house-remix-instrumental-ivy-states-musicbed.wav',

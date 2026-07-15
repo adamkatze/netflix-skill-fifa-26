@@ -175,26 +175,7 @@ body.controlView #app-wrapper {
     color: var(--red);
 }
 
-/* Skip Flyover is hidden for now (button + its help-modal row). All the code
-   behind it still works — delete this rule to bring it back. */
-.cpSkipFlyover,
-.cpHelpRow:has(.cpSkipFlyover) {
-    display: none !important;
-}
-
-/* Skip Flyover is greyed out and unclickable unless we're in the flyover phase. */
-.cpSkipFlyover {
-    opacity: .2;
-    pointer-events: none;
-}
-#controlPanel[data-phase="flyover"] .cpSkipFlyover {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-/* Scoring is disabled until the flyover and countdown finish and the game begins. */
-#controlPanel[data-phase="flyover"] .cpScoreButtons,
-#controlPanel[data-phase="flyover"] .cpCelebrate,
+/* Scoring is disabled until the countdown finishes and the game begins. */
 #controlPanel[data-phase="countdown"] .cpScoreButtons,
 #controlPanel[data-phase="countdown"] .cpCelebrate {
     opacity: 0.3;
@@ -286,7 +267,6 @@ body.controlView .cpBtn {
     padding: clamp(14px, 3vh, 30px) 0;
 }
 /* Longer-labelled buttons get a smaller, fit-friendly size. */
-body.controlView .cpSkipFlyover,
 body.controlView .cpCelebrate {
     font-size: clamp(1rem, 4.5vw, 2rem);
 }
@@ -427,9 +407,6 @@ body.controlView .cpDangerButtons .cpBtn {
 }
 #cpHelpModal .cpScoreButtons .cpMinus {
     grid-column: auto;
-}
-#cpHelpModal .cpSkipFlyover {
-    opacity: 1;        /* shown active in help, not greyed out */
 }
 .cpHelpBtn .cpBtn {
     pointer-events: none;
@@ -680,21 +657,16 @@ button.cpBtn.cpRestart.blackButton {
     flex-direction: column;
 }
 
-/* Hide the game UI (timer + lanes) until play begins. During idle, flyover,
-   the start countdown, and the playreveal video, only the background video
-   (and the countdown) show. */
+/* Hide the game UI (timer + lanes) until play begins. During idle and the
+   start countdown, only the background video (and the countdown) show. */
 .wallTop,
 .wallLanes {
     transition: opacity var(--anim-speed);
 }
 #wall[data-state="idle"] .wallTop,
 #wall[data-state="idle"] .wallLanes,
-#wall[data-state="flyover"] .wallTop,
-#wall[data-state="flyover"] .wallLanes,
 #wall[data-state="countdown"] .wallTop,
-#wall[data-state="countdown"] .wallLanes,
-#wall[data-state="playreveal"] .wallTop,
-#wall[data-state="playreveal"] .wallLanes {
+#wall[data-state="countdown"] .wallLanes {
     opacity: 0;
     visibility: hidden;
 }
@@ -711,6 +683,18 @@ button.cpBtn.cpRestart.blackButton {
 #wall[data-state="gameover"] .wallLaneScoreBox,
 #wall[data-state="gameover"] #wallTimer {
     opacity: 1;
+}
+
+/* Fade the game UI (timer, scores, WINNER) out over the confetti's last
+   seconds so the score reset back to 0 happens invisibly. Added by wall.js
+   when the confetti video enters its final stretch; removed on state change.
+   The duration must stay SHORTER than UI_FADE_LEAD_S in wall.js so the fade
+   is fully finished before the confetti ends and the board resets. */
+#wall.uiFadeOut .wallTop,
+#wall.uiFadeOut .wallLaneScoreBox,
+#wall.uiFadeOut .wallWinner {
+    opacity: 0;
+    transition: opacity 1.5s;
 }
 
 /* "3-2-1 -> KICK" video, centered across the two lanes at the top of the wall.
@@ -771,7 +755,6 @@ button.cpBtn.cpRestart.blackButton {
     z-index: 3;
     display: none !important;
 }
-#wall.timeup .wallGameOver,
 #wall[data-state="gameover"] .wallGameOver {
     display: block;
     animation: gameOverPop 0.4s ease-out;
@@ -817,9 +800,9 @@ font-size: 100px;
     font-family: var(--bold-font);
 }
 /* Tint the state label to match the phase. */
-#wall[data-state="flyover"]  .wallState { color: var(--yellow); }
-#wall[data-state="playing"]  .wallState { color: var(--green); }
-#wall[data-state="gameover"] .wallState { color: var(--red); }
+#wall[data-state="countdown"] .wallState { color: var(--yellow); }
+#wall[data-state="playing"]   .wallState { color: var(--green); }
+#wall[data-state="gameover"]  .wallState { color: var(--red); }
 
 .wallLanes {
     flex: 1 1 auto;

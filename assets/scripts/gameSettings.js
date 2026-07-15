@@ -12,10 +12,6 @@ const instructionsScreenTimeout = 5000
 
 const gameLength = 12000;
 
-// Length of the intro "flyover" animation that plays before the timer starts.
-// Adjust once we know the real animation length. The server is authoritative.
-const flyoverLength = 11620;   // actual duration of assets/videos/2_flyover.webm
-
 
 //------------------------------Display Wall Settings-----------------------------
 // Full dimensions of the physical wall panel, in px.
