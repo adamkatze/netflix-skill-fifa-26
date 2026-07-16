@@ -10,7 +10,7 @@ const gameScale = 0.3
 const showInstructionsScreen = true
 const instructionsScreenTimeout = 5000
 
-const gameLength = 12000;
+const gameLength = 30000;
 
 // Length of the intro "flyover" animation that plays before the timer starts.
 // Adjust once we know the real animation length. The server is authoritative.
@@ -26,6 +26,11 @@ const wallHeight = 2080
 // of the wall; the remaining width to the left is left empty for now.
 const gameAreaWidth = 2496
 const gameAreaHeight = 2080
+
+// Horizontal nudge for the whole game UI cluster (scores, timer, KICK,
+// WINNER), in wall px. Positive shifts right. Tune on-site to line the UI
+// up with the physical divider.
+const gameAreaOffsetX = 100
 
 var depthSettings = {
     bg_sub: 10,

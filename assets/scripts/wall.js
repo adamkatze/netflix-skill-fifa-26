@@ -282,6 +282,7 @@ function setupWallLayout() {
     const wall = document.getElementById('wall');
     wall.style.width = gameAreaWidth + 'px';
     wall.style.height = gameAreaHeight + 'px';
+    wall.style.transform = `translateX(${gameAreaOffsetX}px)`;
 
     updateBackgroundVideo('idle');   // show the idle background right away
     scaleWall();

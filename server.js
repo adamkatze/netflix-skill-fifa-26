@@ -141,7 +141,7 @@ const LANES = ['1', '2'];
 
 // How long a round runs, in ms. Both control panels and the game wall count
 // down from this once the game starts.
-const GAME_LENGTH_MS = 120 * 1000;
+const GAME_LENGTH_MS = 30 * 1000;
 
 // Length of the intro "flyover" animation before the timer actually begins.
 // Adjust once we know the real animation length.
