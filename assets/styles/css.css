@@ -713,6 +713,18 @@ button.cpBtn.cpRestart.blackButton {
     opacity: 1;
 }
 
+/* Fade the game UI (timer, scores, WINNER) out over the confetti's last
+   seconds so the score reset back to 0 happens invisibly. Added by wall.js
+   when the confetti video enters its final stretch; removed on state change.
+   The duration must stay SHORTER than UI_FADE_LEAD_S in wall.js so the fade
+   is fully finished before the confetti ends and the board resets. */
+#wall.uiFadeOut .wallTop,
+#wall.uiFadeOut .wallLaneScoreBox,
+#wall.uiFadeOut .wallWinner {
+    opacity: 0;
+    transition: opacity 0.75s;
+}
+
 /* "3-2-1 -> KICK" video, centered across the two lanes at the top of the wall.
    Shows during the countdown and holds "KICK" through gameplay. */
 .wallKick {
@@ -725,6 +737,12 @@ button.cpBtn.cpRestart.blackButton {
     z-index: 3;
     pointer-events: none;
     display: none;
+    transition: opacity 0.6s;
+}
+/* Added by wall.js 2s before the countdown sound ends; removed on hide/replay.
+   Must stay shorter than KICK_FADE_LEAD_S in wall.js. */
+.wallKick.fadeOut {
+    opacity: 0;
 }
 
 /* Start-of-play 3-2-1 countdown, centered near the top of the game UI area. */

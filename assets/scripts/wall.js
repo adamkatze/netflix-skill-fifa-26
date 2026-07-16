@@ -31,6 +31,17 @@ let musicPending = false;   // play() was blocked by autoplay policy — retry o
 // transition on #wallVideo (var(--anim-speed), 500ms).
 const BG_FADE_MS = 0;
 
+// The WINNER animation + scores fade out over the confetti video's final
+// stretch, so the board resets to 0 invisibly. The fade starts this many
+// seconds before the confetti ends; the CSS transition on #wall.uiFadeOut
+// (0.75s) must stay shorter so the fade completes before the reset.
+const UI_FADE_LEAD_S = 2;
+
+// The held "KICK" frame fades out this many seconds before the countdown
+// sound finishes. The CSS transition on .wallKick.fadeOut (0.6s) must stay
+// shorter so the fade completes before the sound ends.
+const KICK_FADE_LEAD_S = 2;
+
 const STATE_LABELS = {
     idle:       'IDLE',
     flyover:    'FLYOVER',
@@ -389,8 +400,12 @@ function listenForServer() {
                 resetScores();
                 break;
 
-            // Authoritative score map.
+            // Authoritative score map. The server broadcasts an EMPTY map when
+            // every panel resets; if that lands during the game-over sequence
+            // (confetti + fade still running), keep the final scores on screen —
+            // the sequence resets the board once it's invisible.
             case 'scoreUpdate':
+                if (wallState === 'gameover' && !Object.keys(data.data.scores || {}).length) break;
                 updateScores(data.data.scores);
                 break;
 
@@ -430,6 +445,7 @@ function setState(state) {
     wallState = state;
     $('#wall').attr('data-state', state);
     $('#wall').removeClass('timeup');   // cleared here; re-added when the timer hits 0
+    $('#wall').removeClass('uiFadeOut');   // restore the UI faded during the confetti
     $('#wallState').text(STATE_LABELS[state] || state);
 
     // Any state but the reveal restores the background players' looping
@@ -529,6 +545,16 @@ function playGameOverOverlay() {
         }
     };
 
+    // Fade the WINNER + scores out over the confetti's final stretch so the
+    // reset to 0 happens invisibly. (In debug the overlay loops — never fade.)
+    v.ontimeupdate = function () {
+        if (v.loop) return;
+        if (isFinite(v.duration) && v.duration - v.currentTime <= UI_FADE_LEAD_S) {
+            $('#wall').addClass('uiFadeOut');
+            v.ontimeupdate = null;
+        }
+    };
+
     const played = v.play();
     if (played && played.catch) played.catch(() => {});
 }
@@ -537,6 +563,7 @@ function hideGameOverOverlay() {
     const v = document.getElementById('wallOverlay');
     if (!v) return;
     v.pause();
+    v.ontimeupdate = null;
     v.style.display = 'none';
     v.dataset.playing = '0';
 }
@@ -603,6 +630,7 @@ function playKickVideo() {
         v.dataset.loaded = '1';
     }
     v.dataset.playing = '1';
+    v.classList.remove('fadeOut');   // a new round starts fully visible
     v.style.display = 'block';
     v.currentTime = 0;
 
@@ -614,6 +642,16 @@ function playKickVideo() {
         sfx.currentTime = 0;
         const sfxPlayed = sfx.play();
         if (sfxPlayed && sfxPlayed.catch) sfxPlayed.catch(() => {});
+
+        // Fade the held "KICK" frame out over the countdown sound's final
+        // second. (In debug the video loops for positioning — keep it visible.)
+        sfx.ontimeupdate = function () {
+            if (v.loop) return;
+            if (isFinite(sfx.duration) && sfx.duration - sfx.currentTime <= KICK_FADE_LEAD_S) {
+                v.classList.add('fadeOut');
+                sfx.ontimeupdate = null;
+            }
+        };
     }
 }
 
@@ -624,10 +662,14 @@ function hideKickVideo() {
     v.style.display = 'none';
     v.dataset.playing = '0';
 
+    // Restore full opacity for the next round.
+    v.classList.remove('fadeOut');
+
     const sfx = getKickSoundPlayer();
     if (sfx) {
         sfx.pause();
         sfx.currentTime = 0;
+        sfx.ontimeupdate = null;
     }
 }
 
