@@ -722,7 +722,7 @@ button.cpBtn.cpRestart.blackButton {
 #wall.uiFadeOut .wallLaneScoreBox,
 #wall.uiFadeOut .wallWinner {
     opacity: 0;
-    transition: opacity 0.75s;
+    transition: opacity 0.25s;
 }
 
 /* "3-2-1 -> KICK" video, centered across the two lanes at the top of the wall.

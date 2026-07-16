@@ -34,8 +34,8 @@ const BG_FADE_MS = 0;
 // The WINNER animation + scores fade out over the confetti video's final
 // stretch, so the board resets to 0 invisibly. The fade starts this many
 // seconds before the confetti ends; the CSS transition on #wall.uiFadeOut
-// (0.75s) must stay shorter so the fade completes before the reset.
-const UI_FADE_LEAD_S = 2;
+// (0.25s) must stay shorter so the fade completes before the reset.
+const UI_FADE_LEAD_S = 0.3;
 
 // The held "KICK" frame fades out this many seconds before the countdown
 // sound finishes. The CSS transition on .wallKick.fadeOut (0.6s) must stay

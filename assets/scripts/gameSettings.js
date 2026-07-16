@@ -30,7 +30,7 @@ const gameAreaHeight = 2080
 // Horizontal nudge for the whole game UI cluster (scores, timer, KICK,
 // WINNER), in wall px. Positive shifts right. Tune on-site to line the UI
 // up with the physical divider.
-const gameAreaOffsetX = 100
+const gameAreaOffsetX = 50
 
 var depthSettings = {
     bg_sub: 10,
