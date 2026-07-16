@@ -631,8 +631,20 @@ function playKickVideo() {
     }
     v.dataset.playing = '1';
     v.classList.remove('fadeOut');   // a new round starts fully visible
-    v.style.display = 'block';
     v.currentTime = 0;
+
+    // Seeking is async — only reveal once a fresh frame is presented, so the
+    // held "KICK" frame from the previous round can't flash before playback.
+    let shown = false;
+    const reveal = () => {
+        if (shown) return;
+        shown = true;
+        v.style.display = 'block';
+        v.removeEventListener('seeked', reveal);
+        v.removeEventListener('playing', reveal);
+    };
+    v.addEventListener('seeked', reveal);
+    v.addEventListener('playing', reveal);
 
     const played = v.play();
     if (played && played.catch) played.catch(() => {});
@@ -660,6 +672,7 @@ function hideKickVideo() {
     if (!v) return;
     v.pause();
     v.style.display = 'none';
+    v.currentTime = 0;   // rewind while hidden so the next round starts on frame 0
     v.dataset.playing = '0';
 
     // Restore full opacity for the next round.
