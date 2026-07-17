@@ -478,8 +478,12 @@ function enterPlayReveal() {
 
     setState('playreveal');
 
-    // Get the currently active video
-    const v = document.getElementById(activeVideoId);
+    // setState() -> updateBackgroundVideo() loads the reveal onto the inactive
+    // player and stamps dataset.state synchronously; activeVideoId only updates
+    // after the async swap, so find the reveal player by its state stamp.
+    const v = ['wallVideo', 'wallVideo2']
+        .map(id => document.getElementById(id))
+        .find(el => el && el.dataset.state === 'playreveal');
     if (!v) return;
     v.loop = false;
     v.onended = goIdle;
