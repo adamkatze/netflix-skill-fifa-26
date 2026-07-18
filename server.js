@@ -20,6 +20,13 @@ const BASE_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
 const networkInterfaces = os.networkInterfaces();
 const addresses = [];
 
+// Log every HTTP request with the client IP so we can see exactly which
+// device requested which file (and where a stalled page load stops).
+app.use((req, res, next) => {
+  console.log(`[http] ${req.ip} ${req.method} ${req.url}`);
+  next();
+});
+
 //Serve local files from the folder the server runs from
 const staticPath = path.join(BASE_DIR, '/');
 app.use(express.static(staticPath));
@@ -368,10 +375,15 @@ function setLaneState(lane, state, socketId) {
 }
 
 
+// Log low-level socket handshake failures (bad transport, CORS, timeouts) —
+// these never reach the 'connection' handler, so they're invisible otherwise.
+io.engine.on('connection_error', err => {
+    console.log(`[socket error] code=${err.code} message=${err.message} from ${err.req && err.req.socket ? err.req.socket.remoteAddress : 'unknown'}`);
+});
+
 // Handle WebSocket connections
 io.on('connection', socket => {
-    console.log('A user connected');
-    console.log(socket.id)
+    console.log(`A user connected: ${socket.id} from ${socket.handshake.address}`);
 
     // Handle incoming WebSocket messages
     socket.on('message', data => {
